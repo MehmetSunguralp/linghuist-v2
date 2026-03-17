@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/linghuist-v2-e2e"
+    },
+    {
+      "path": "./apps/linghuist-v2"
+    }
+  ]
+}
