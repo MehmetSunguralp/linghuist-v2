@@ -1,0 +1,207 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  
+}
+//////////////////////
+// ENUMS
+//////////////////////
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum NotificationType {
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  LIKE
+  COMMENT
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+//////////////////////
+// USER
+//////////////////////
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String?  @unique
+  name      String?
+  avatarUrl String?
+
+  nativeLanguage   String
+  learningLanguage String
+  level            String
+
+  isOnline   Boolean   @default(false)
+  lastOnline DateTime?
+
+  role Role @default(USER)
+
+  // relations
+  chats            ChatParticipant[]
+  messagesSent     Message[] @relation("SentMessages")
+
+  sentRequests     FriendRequest[] @relation("SentRequests")
+  receivedRequests FriendRequest[] @relation("ReceivedRequests")
+
+  blockedUsers     Block[] @relation("Blocker")
+  blockedBy        Block[] @relation("Blocked")
+
+  notifications    Notification[]
+  sentNotifications Notification[] @relation("NotificationSender")
+
+  posts            Post[]
+  comments         Comment[]
+  likes            Like[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//////////////////////
+// CHAT & MESSAGE
+//////////////////////
+
+model Chat {
+  id           String            @id @default(uuid())
+  participants ChatParticipant[]
+  messages     Message[]
+  createdAt    DateTime          @default(now())
+}
+
+model ChatParticipant {
+  id     String @id @default(uuid())
+  chatId String
+  userId String
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([chatId, userId])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  chatId    String
+  senderId  String
+  content   String?
+  createdAt DateTime @default(now())
+
+  // unread tracking
+  read Boolean @default(false)
+
+  // AI FEATURES
+  translatedText String?
+  correctedText  String?
+  aiSuggestion   String?
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+//////////////////////
+// FRIEND SYSTEM
+//////////////////////
+
+model FriendRequest {
+  id         String              @id @default(uuid())
+  senderId   String
+  receiverId String
+  status     FriendRequestStatus @default(PENDING)
+
+  sender   User @relation("SentRequests", fields: [senderId], references: [id])
+  receiver User @relation("ReceivedRequests", fields: [receiverId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+//////////////////////
+// BLOCK SYSTEM
+//////////////////////
+
+model Block {
+  id         String @id @default(uuid())
+  blockerId  String
+  blockedId  String
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id])
+  blocked User @relation("Blocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+}
+
+//////////////////////
+// NOTIFICATIONS
+//////////////////////
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           // receiver
+  senderId  String?          // who triggered
+  type      NotificationType
+  entityId  String?          // postId / requestId / commentId
+
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  // optional extra data
+  metadata  Json?
+
+  user   User @relation(fields: [userId], references: [id])
+  sender User? @relation("NotificationSender", fields: [senderId], references: [id])
+}
+
+//////////////////////
+// SOCIAL SYSTEM
+//////////////////////
+
+model Post {
+  id        String   @id @default(uuid())
+  authorId  String
+  content   String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  author   User    @relation(fields: [authorId], references: [id])
+  likes    Like[]
+  comments Comment[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+}
+
+model Like {
+  id     String @id @default(uuid())
+  postId String
+  userId String
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+}
