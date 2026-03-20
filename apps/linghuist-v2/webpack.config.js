@@ -1,5 +1,6 @@
 const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin');
 const { join } = require('path');
+const path = require('path');
 
 module.exports = {
   output: {
@@ -15,11 +16,21 @@ module.exports = {
       compiler: 'tsc',
       main: './src/main.ts',
       tsConfig: './tsconfig.app.json',
-      assets: ["./src/assets"],
+      assets: ['./src/assets'],
       optimization: false,
       outputHashing: 'none',
       generatePackageJson: false,
       sourceMap: true,
-    })
+    }),
   ],
+  externals: {
+    '@prisma/client': 'commonjs @prisma/client',
+    '@prisma/adapter-pg': 'commonjs @prisma/adapter-pg',
+    pg: 'commonjs pg',
+  },
+  resolve: {
+    alias: {
+      '.prisma/client': path.resolve(__dirname, '../../node_modules/.prisma/client'),
+    },
+  },
 };
