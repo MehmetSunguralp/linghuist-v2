@@ -38,8 +38,7 @@ export class AuthService {
     });
 
     return {
-      user,
-      session: data.session,
+      message: `Confirmation email sent to ${user.email}`,
     };
   }
 
@@ -56,8 +55,8 @@ export class AuthService {
     }
 
     return {
-      session: data.session,
-      user: data.user,
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
     };
   }
 }

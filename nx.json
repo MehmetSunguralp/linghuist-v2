@@ -15,7 +15,6 @@
     ],
     "sharedGlobals": ["{workspaceRoot}/.github/workflows/ci.yml"]
   },
-  "nxCloudId": "69b9ddf62a34a7d42d867737",
   "plugins": [
     {
       "plugin": "@nx/js/typescript",
@@ -60,5 +59,14 @@
     "test": {
       "dependsOn": ["^build"]
     }
-  }
+  },
+  "tasksRunnerOptions": {
+    "default": {
+      "runner": "nx/tasks-runners/default",
+      "options": {
+        "useDaemonProcess": true
+      }
+    }
+  },
+  "analytics": false
 }

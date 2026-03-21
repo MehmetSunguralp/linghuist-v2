@@ -64,6 +64,7 @@
         ],
         "options": {
           "buildTarget": "@linghuist-v2/linghuist-v2:build",
+          "watch": true,  
           "runBuildTargetDependencies": false
         },
         "configurations": {
