@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import { SupabaseService } from '../../../../../../libs/supabase/supabase.service';
-import { PrismaService } from '../../../../../../libs/prisma/prisma.service';
+import { PrismaService } from '@linghuist-v2/prisma';
+import { SupabaseService } from '@linghuist-v2/supabase';
 
 @Injectable()
 export class AuthService {

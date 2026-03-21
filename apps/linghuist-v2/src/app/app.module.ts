@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PrismaModule } from '../../../../libs/prisma/prisma.module';
-import { SupabaseModule } from '../../../../libs/supabase/supabase.module';
+import { PrismaModule } from '@linghuist-v2/prisma';
+import { SupabaseModule } from '@linghuist-v2/supabase';
 import { AuthModule } from './modules/auth/auth.module';
 
 @Module({

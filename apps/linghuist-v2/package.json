@@ -83,6 +83,8 @@
     }
   },
   "dependencies": {
+    "@linghuist-v2/prisma": "*",
+    "@linghuist-v2/supabase": "*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
