@@ -9,12 +9,14 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
 
     const authHeader = request.headers.authorization;
+    const token =
+      authHeader && /^Bearer\s+/i.test(authHeader)
+        ? authHeader.replace(/^Bearer\s+/i, '').trim()
+        : '';
 
-    if (!authHeader) {
+    if (!token) {
       throw new UnauthorizedException('No token provided');
     }
-
-    const token = authHeader.replace('Bearer ', '');
 
     const supabase = this.supabaseService.getClient();
 
@@ -23,7 +25,8 @@ export class AuthGuard implements CanActivate {
     if (error || !data.user) {
       throw new UnauthorizedException('Invalid token');
     }
-    request.user = data.user;
+
+    request.user = { id: data.user.id };
 
     return true;
   }

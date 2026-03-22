@@ -53,7 +53,7 @@ export class AuthService {
       update: {},
       create: {
         id: data.user.id,
-        email: dto.email,
+        email: data.user.email!,
       },
     });
 
