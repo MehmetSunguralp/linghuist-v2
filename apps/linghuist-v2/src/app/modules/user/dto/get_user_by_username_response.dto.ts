@@ -1,8 +1,5 @@
-export class MeUserResponseDto {
-  id!: string;
-  email!: string;
+export class GetUserByUsernameResponseDto {
   username?: string | null;
-  name?: string | null;
   avatarUrl?: string | null;
   nativeLanguage?: string | null;
   learningLanguage?: string | null;
@@ -10,7 +7,7 @@ export class MeUserResponseDto {
   bio?: string | null;
 }
 
-export class MeUserResponseEnvelopeDto {
+export class GetUserByUsernameResponseEnvelopeDto {
   message!: string;
-  data!: MeUserResponseDto;
+  data!: GetUserByUsernameResponseDto;
 }

@@ -29,4 +29,8 @@ export class UpdateMeDto {
   @IsOptional()
   @IsString()
   level?: string | null;
+
+  @IsOptional()
+  @IsString()
+  bio?: string | null;
 }

@@ -42,6 +42,7 @@ model User {
   username  String?  @unique
   name      String?
   avatarUrl String?
+  bio       String?
 
   nativeLanguage   String?
   learningLanguage String?

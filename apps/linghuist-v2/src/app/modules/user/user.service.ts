@@ -12,6 +12,7 @@ const meUserSelect = {
   nativeLanguage: true,
   learningLanguage: true,
   level: true,
+  bio: true,
 } as const;
 
 @Injectable()
@@ -28,7 +29,7 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    const { id, email, username, name, avatarUrl, nativeLanguage, learningLanguage, level } = user;
+    const { id, email, username, name, avatarUrl, nativeLanguage, learningLanguage, level, bio } = user;
 
     return {
       message: 'User retrieved successfully',
@@ -41,14 +42,13 @@ export class UserService {
         nativeLanguage,
         learningLanguage,
         level,
+        bio,
       },
     };
   }
 
   async updateMe(userId: string, updateMeDto: UpdateMeDto): Promise<MeUserResponseEnvelopeDto> {
-    const data = Object.fromEntries(
-      Object.entries(updateMeDto).filter(([, v]) => v !== undefined),
-    ) as UpdateMeDto;
+    const data = Object.fromEntries(Object.entries(updateMeDto).filter(([, v]) => v !== undefined)) as UpdateMeDto;
 
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('No fields to update');
