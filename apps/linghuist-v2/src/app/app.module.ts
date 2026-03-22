@@ -6,6 +6,7 @@ import { SupabaseModule } from '@linghuist-v2/supabase';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 
+/** Root module: global Prisma + Supabase, then feature modules. */
 @Module({
   imports: [PrismaModule, SupabaseModule, AuthModule, UserModule],
   controllers: [AppController],

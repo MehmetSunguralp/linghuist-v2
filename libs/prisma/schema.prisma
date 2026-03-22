@@ -8,8 +8,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" 
+  provider = "postgresql"
 }
+
 //////////////////////
 // ENUMS
 //////////////////////
@@ -17,6 +18,7 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  MODERATOR
 }
 
 enum NotificationType {
@@ -37,16 +39,21 @@ enum FriendRequestStatus {
 //////////////////////
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  username  String?  @unique
-  name      String?
-  avatarUrl String?
-  bio       String?
+  id           String  @id @default(uuid())
+  email        String  @unique
+  username     String? @unique
+  name         String?
+  avatarUrl    String?
+  thumbnailUrl String?
+  bio          String?
 
-  nativeLanguage   String?
-  learningLanguage String?
-  level            String?
+  /// ISO 639-1 (or your app’s) language codes, e.g. ["en", "tr"]
+  languagesKnown    String[] @default([])
+  languagesLearning String[] @default([])
+
+  country    String?
+  age        Int?
+  isVerified Boolean @default(false)
 
   isOnline   Boolean   @default(false)
   lastOnline DateTime?
@@ -54,21 +61,21 @@ model User {
   role Role @default(USER)
 
   // relations
-  chats            ChatParticipant[]
-  messagesSent     Message[] @relation("SentMessages")
+  chats        ChatParticipant[]
+  messagesSent Message[]         @relation("SentMessages")
 
   sentRequests     FriendRequest[] @relation("SentRequests")
   receivedRequests FriendRequest[] @relation("ReceivedRequests")
 
-  blockedUsers     Block[] @relation("Blocker")
-  blockedBy        Block[] @relation("Blocked")
+  blockedUsers Block[] @relation("Blocker")
+  blockedBy    Block[] @relation("Blocked")
 
-  notifications    Notification[]
+  notifications     Notification[]
   sentNotifications Notification[] @relation("NotificationSender")
 
-  posts            Post[]
-  comments         Comment[]
-  likes            Like[]
+  posts    Post[]
+  comments Comment[]
+  likes    Like[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -91,7 +98,7 @@ model ChatParticipant {
   userId String
 
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([chatId, userId])
 }
@@ -112,7 +119,7 @@ model Message {
   aiSuggestion   String?
 
   chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  sender User @relation("SentMessages", fields: [senderId], references: [id])
+  sender User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
 }
 
 //////////////////////
@@ -125,8 +132,8 @@ model FriendRequest {
   receiverId String
   status     FriendRequestStatus @default(PENDING)
 
-  sender   User @relation("SentRequests", fields: [senderId], references: [id])
-  receiver User @relation("ReceivedRequests", fields: [receiverId], references: [id])
+  sender   User @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
@@ -136,12 +143,12 @@ model FriendRequest {
 //////////////////////
 
 model Block {
-  id         String @id @default(uuid())
-  blockerId  String
-  blockedId  String
+  id        String @id @default(uuid())
+  blockerId String
+  blockedId String
 
-  blocker User @relation("Blocker", fields: [blockerId], references: [id])
-  blocked User @relation("Blocked", fields: [blockedId], references: [id])
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
 
   @@unique([blockerId, blockedId])
 }
@@ -151,20 +158,20 @@ model Block {
 //////////////////////
 
 model Notification {
-  id        String           @id @default(uuid())
-  userId    String           // receiver
-  senderId  String?          // who triggered
-  type      NotificationType
-  entityId  String?          // postId / requestId / commentId
+  id       String           @id @default(uuid())
+  userId   String // receiver
+  senderId String? // who triggered
+  type     NotificationType
+  entityId String? // postId / requestId / commentId
 
-  read      Boolean          @default(false)
-  createdAt DateTime         @default(now())
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   // optional extra data
-  metadata  Json?
+  metadata Json?
 
-  user   User @relation(fields: [userId], references: [id])
-  sender User? @relation("NotificationSender", fields: [senderId], references: [id])
+  user   User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender User? @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
 }
 
 //////////////////////
@@ -178,7 +185,7 @@ model Post {
   imageUrl  String?
   createdAt DateTime @default(now())
 
-  author   User    @relation(fields: [authorId], references: [id])
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   likes    Like[]
   comments Comment[]
 }
@@ -191,7 +198,7 @@ model Comment {
   createdAt DateTime @default(now())
 
   post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author User @relation(fields: [authorId], references: [id])
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 }
 
 model Like {
@@ -200,7 +207,7 @@ model Like {
   userId String
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
 }

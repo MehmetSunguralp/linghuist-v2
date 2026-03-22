@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '@linghuist-v2/supabase';
 
+/** Validates `Authorization: Bearer <access_token>` and attaches `request.user.id`. */
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(private readonly supabaseService: SupabaseService) {}

@@ -1,9 +1,13 @@
 export class GetUserByUsernameResponseDto {
   username?: string | null;
+  name?: string | null;
   avatarUrl?: string | null;
-  nativeLanguage?: string | null;
-  learningLanguage?: string | null;
-  level?: string | null;
+  thumbnailUrl?: string | null;
+  languagesKnown!: string[];
+  languagesLearning!: string[];
+  country?: string | null;
+  age?: number | null;
+  isVerified!: boolean;
   bio?: string | null;
 }
 

@@ -12,9 +12,12 @@ describe('AppService', () => {
     service = app.get<AppService>(AppService);
   });
 
-  describe('getData', () => {
-    it('should return "Hello API"', () => {
-      expect(service.getData()).toEqual({ message: 'Hello API' });
+  describe('getHealth', () => {
+    it('returns standard API envelope', () => {
+      expect(service.getHealth()).toEqual({
+        message: 'OK',
+        data: { status: 'running' },
+      });
     });
   });
 });

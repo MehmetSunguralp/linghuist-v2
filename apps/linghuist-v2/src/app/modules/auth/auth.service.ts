@@ -1,30 +1,28 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { SignupDto } from './dto/signup.dto';
-import { LoginDto } from './dto/login.dto';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '@linghuist-v2/prisma';
 import { SupabaseService } from '@linghuist-v2/supabase';
+import type { ApiEnvelope, LoginSessionData } from '../../common/api-envelope.types';
+import { SignupDto } from './dto/signup.dto';
+import { LoginDto } from './dto/login.dto';
 import { RequestPasswordResetDto } from './dto/request_password_reset.dto';
 import { UpdatePasswordDto } from './dto/update_password.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly prisma: PrismaService,
   ) {}
 
-  /////
-  // SIGNUP
-  ////
-  async signup(dto: SignupDto) {
-    // 1. password check
+  async signup(dto: SignupDto): Promise<ApiEnvelope<null>> {
     if (dto.password !== dto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
 
     const supabase = this.supabaseService.getClient();
 
-    // 2. supabase signup
     const { data, error } = await supabase.auth.signUp({
       email: dto.email,
       password: dto.password,
@@ -34,10 +32,9 @@ export class AuthService {
     });
 
     if (error) {
-      console.error({
+      this.logger.error({
         context: 'AuthService.signup',
-        message: 'Signup error',
-        error: error.message,
+        message: error.message,
         email: dto.email,
       });
       throw new BadRequestException('Signup failed');
@@ -47,7 +44,6 @@ export class AuthService {
       throw new BadRequestException('User creation failed');
     }
 
-    // 3. prisma user upsert
     await this.prisma.user.upsert({
       where: { id: data.user.id },
       update: {},
@@ -63,11 +59,8 @@ export class AuthService {
     };
   }
 
-  /////
-  // LOGIN
-  ////
-  //TODO: Add rate limit protection
-  async login(dto: LoginDto) {
+  /** Consider rate limiting by IP + email for production hardening. */
+  async login(dto: LoginDto): Promise<ApiEnvelope<LoginSessionData>> {
     const supabase = this.supabaseService.getClient();
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -76,10 +69,9 @@ export class AuthService {
     });
 
     if (error) {
-      console.error({
+      this.logger.warn({
         context: 'AuthService.login',
-        message: 'Login error.',
-        error: error.message,
+        message: error.message,
         email: dto.email,
       });
       throw new UnauthorizedException('Invalid credentials');
@@ -98,10 +90,7 @@ export class AuthService {
     };
   }
 
-  /////
-  // REQUEST PASSWORD RESET
-  ////
-  async requestPasswordReset(dto: RequestPasswordResetDto) {
+  async requestPasswordReset(dto: RequestPasswordResetDto): Promise<ApiEnvelope<null>> {
     const supabase = this.supabaseService.getClient();
 
     const { error } = await supabase.auth.resetPasswordForEmail(dto.email, {
@@ -109,10 +98,9 @@ export class AuthService {
     });
 
     if (error) {
-      console.error({
+      this.logger.error({
         context: 'AuthService.requestPasswordReset',
-        message: 'Password reset error.',
-        error: error.message,
+        message: error.message,
         email: dto.email,
       });
     }
@@ -123,15 +111,12 @@ export class AuthService {
     };
   }
 
-  /////
-  // UPDATE PASSWORD
-  ////
-  async updatePassword(dto: UpdatePasswordDto) {
+  async updatePassword(dto: UpdatePasswordDto): Promise<ApiEnvelope<null>> {
     const supabase = this.supabaseService.getClient();
 
     const { error: sessionError } = await supabase.auth.setSession({
       access_token: dto.accessToken,
-      refresh_token: dto.accessToken,
+      refresh_token: dto.refreshToken,
     });
 
     if (sessionError) {
@@ -143,10 +128,9 @@ export class AuthService {
     });
 
     if (error) {
-      console.error({
+      this.logger.error({
         context: 'AuthService.updatePassword',
-        message: 'Password update error.',
-        error: error.message,
+        message: error.message,
       });
       throw new BadRequestException('Password update failed');
     }

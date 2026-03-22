@@ -1,11 +1,16 @@
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
-/** Partial profile update; all fields optional (PATCH-style). */
+/** Partial profile update; all fields optional (PATCH-style). Email is immutable after signup. */
 export class UpdateMeDto {
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
   @IsOptional()
   @IsString()
   username?: string | null;
@@ -20,15 +25,30 @@ export class UpdateMeDto {
 
   @IsOptional()
   @IsString()
-  nativeLanguage?: string | null;
+  thumbnailUrl?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  languagesKnown?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  languagesLearning?: string[];
 
   @IsOptional()
   @IsString()
-  learningLanguage?: string | null;
+  country?: string | null;
 
   @IsOptional()
-  @IsString()
-  level?: string | null;
+  @Type(() => Number)
+  @IsInt()
+  @Min(13)
+  @Max(120)
+  age?: number | null;
 
   @IsOptional()
   @IsString()
