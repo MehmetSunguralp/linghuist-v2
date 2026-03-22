@@ -8,3 +8,8 @@ export class MeUserResponseDto {
   learningLanguage?: string | null;
   level?: string | null;
 }
+
+export class MeUserResponseEnvelopeDto {
+  message!: string;
+  data!: MeUserResponseDto;
+}

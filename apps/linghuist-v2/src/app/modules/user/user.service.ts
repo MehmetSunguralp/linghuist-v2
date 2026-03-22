@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@linghuist-v2/prisma';
-import { MeUserResponseDto } from './dto/me_user_response.dto';
+import { MeUserResponseEnvelopeDto } from './dto/me_user_response.dto';
 import { UpdateMeDto } from './dto/update_me.dto';
 
 const meUserSelect = {
@@ -18,7 +18,7 @@ const meUserSelect = {
 export class UserService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async getMe(userId: string): Promise<MeUserResponseDto> {
+  async getMe(userId: string): Promise<MeUserResponseEnvelopeDto> {
     const user = await this.prismaService.user.findUnique({
       where: { id: userId },
       select: meUserSelect,
@@ -31,18 +31,21 @@ export class UserService {
     const { id, email, username, name, avatarUrl, nativeLanguage, learningLanguage, level } = user;
 
     return {
-      id,
-      email,
-      username,
-      name,
-      avatarUrl,
-      nativeLanguage,
-      learningLanguage,
-      level,
+      message: 'User retrieved successfully',
+      data: {
+        id,
+        email,
+        username,
+        name,
+        avatarUrl,
+        nativeLanguage,
+        learningLanguage,
+        level,
+      },
     };
   }
 
-  async updateMe(userId: string, updateMeDto: UpdateMeDto): Promise<MeUserResponseDto> {
+  async updateMe(userId: string, updateMeDto: UpdateMeDto): Promise<MeUserResponseEnvelopeDto> {
     const data = Object.fromEntries(
       Object.entries(updateMeDto).filter(([, v]) => v !== undefined),
     ) as UpdateMeDto;
@@ -59,10 +62,15 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    return this.prismaService.user.update({
+    const updated = await this.prismaService.user.update({
       where: { id: userId },
       data,
       select: meUserSelect,
     });
+
+    return {
+      message: 'User updated successfully',
+      data: updated,
+    };
   }
 }
