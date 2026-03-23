@@ -1,4 +1,17 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUserId } from '../auth/current-user.decorator';
 import type { ApiEnvelope } from '../../common/api-envelope.types';
@@ -8,6 +21,14 @@ import { DeleteMeDto } from './dto/delete_me.dto';
 import { UserService } from './user.service';
 import { GetUserByUsernameResponseEnvelopeDto } from './dto/get_user_by_username_response.dto';
 import { GetAllUsersResponseEnvelopeDto } from './dto/get_all_users_response.dto';
+import { AVATAR_UPLOAD_MAX_BYTES } from './user.constants';
+
+type UploadedImageFile = {
+  buffer: Buffer;
+  size: number;
+  mimetype: string;
+  originalname: string;
+};
 
 /** Authenticated profile and discovery routes; all JSON success bodies use `{ message, data }`. */
 @Controller('user')
@@ -35,6 +56,33 @@ export class UserController {
   @Put('update-me')
   updateMe(@CurrentUserId() userId: string, @Body() updateMeDto: UpdateMeDto): Promise<MeUserResponseEnvelopeDto> {
     return this.userService.updateMe(userId, updateMeDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('me/avatar')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'file', maxCount: 1 },
+        { name: 'avatar', maxCount: 1 },
+      ],
+      {
+      limits: { fileSize: AVATAR_UPLOAD_MAX_BYTES },
+      },
+    ),
+  )
+  uploadMeAvatar(
+    @CurrentUserId() userId: string,
+    @UploadedFiles()
+    files:
+      | {
+          file?: UploadedImageFile[];
+          avatar?: UploadedImageFile[];
+        }
+      | undefined,
+  ): Promise<MeUserResponseEnvelopeDto> {
+    const file = files?.file?.[0] ?? files?.avatar?.[0];
+    return this.userService.uploadMeAvatar(userId, file);
   }
 
   /** POST so clients can reliably send JSON body (password). */
