@@ -8,6 +8,7 @@ export class GetAllUsersResponseDto {
   languagesKnown!: string[];
   languagesLearning!: string[];
   isOnline!: boolean;
+  isTyping!: boolean;
   lastOnline?: Date | null;
 }
 

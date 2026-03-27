@@ -5,6 +5,9 @@ const sharedProfileFields = {
   thumbnailUrl: true,
   languagesKnown: true,
   languagesLearning: true,
+  isOnline: true,
+  isTyping: true,
+  lastOnline: true,
 } as const;
 
 const sharedDetailFields = {
@@ -24,8 +27,6 @@ export const meUserSelect = {
 export const listUsersSelect = {
   id: true,
   ...sharedProfileFields,
-  isOnline: true,
-  lastOnline: true,
 } as const;
 
 export const profileByUsernameSelect = {

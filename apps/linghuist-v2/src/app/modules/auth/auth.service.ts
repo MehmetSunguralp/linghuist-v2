@@ -16,6 +16,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
+  /** Registers a user in auth provider and mirrors minimal profile row in app DB. */
   async signup(dto: SignupDto): Promise<ApiEnvelope<null>> {
     if (dto.password !== dto.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
@@ -34,6 +35,7 @@ export class AuthService {
     if (error) {
       this.logger.error({
         context: 'AuthService.signup',
+        event: 'signupFailed',
         message: error.message,
         email: dto.email,
       });
@@ -43,13 +45,21 @@ export class AuthService {
     if (!data.user) {
       throw new BadRequestException('User creation failed');
     }
+    if (!data.user.email) {
+      this.logger.error({
+        context: 'AuthService.signup',
+        event: 'signupMissingEmail',
+        message: 'Supabase returned user without email',
+      });
+      throw new BadRequestException('Signup failed');
+    }
 
     await this.prisma.user.upsert({
       where: { id: data.user.id },
       update: {},
       create: {
         id: data.user.id,
-        email: data.user.email!,
+        email: data.user.email,
       },
     });
 
@@ -59,7 +69,7 @@ export class AuthService {
     };
   }
 
-  /** Consider rate limiting by IP + email for production hardening. */
+  /** Authenticates with password and returns access/refresh tokens. */
   async login(dto: LoginDto): Promise<ApiEnvelope<LoginSessionData>> {
     const supabase = this.supabaseService.getClient();
 
@@ -71,6 +81,7 @@ export class AuthService {
     if (error) {
       this.logger.warn({
         context: 'AuthService.login',
+        event: 'loginFailed',
         message: error.message,
         email: dto.email,
       });
@@ -90,6 +101,7 @@ export class AuthService {
     };
   }
 
+  /** Sends password reset email and always returns generic success for privacy. */
   async requestPasswordReset(dto: RequestPasswordResetDto): Promise<ApiEnvelope<null>> {
     const supabase = this.supabaseService.getClient();
 
@@ -100,6 +112,7 @@ export class AuthService {
     if (error) {
       this.logger.error({
         context: 'AuthService.requestPasswordReset',
+        event: 'passwordResetRequestFailed',
         message: error.message,
         email: dto.email,
       });
@@ -111,6 +124,7 @@ export class AuthService {
     };
   }
 
+  /** Validates recovery session and updates user password. */
   async updatePassword(dto: UpdatePasswordDto): Promise<ApiEnvelope<null>> {
     const supabase = this.supabaseService.getClient();
 
@@ -120,6 +134,11 @@ export class AuthService {
     });
 
     if (sessionError) {
+      this.logger.warn({
+        context: 'AuthService.updatePassword',
+        event: 'setSessionFailed',
+        message: sessionError.message,
+      });
       throw new UnauthorizedException('Invalid or expired token');
     }
 
@@ -130,6 +149,7 @@ export class AuthService {
     if (error) {
       this.logger.error({
         context: 'AuthService.updatePassword',
+        event: 'passwordUpdateFailed',
         message: error.message,
       });
       throw new BadRequestException('Password update failed');

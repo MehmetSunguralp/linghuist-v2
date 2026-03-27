@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class SupabaseService {
-  private client: SupabaseClient;
+  private readonly client: SupabaseClient;
 
   constructor() {
     const url = process.env.SUPABASE_URL;

@@ -8,3 +8,5 @@ export const USER_THUMBNAILS_BUCKET = 'userThumbnails';
 export const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 export const PROFILE_PICTURE_MAX_BYTES = 250 * 1024;
 export const USER_THUMBNAIL_MAX_BYTES = 1024;
+
+export const USER_NOTIFICATIONS_DEFAULT_PAGE_SIZE = 20;

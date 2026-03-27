@@ -10,6 +10,9 @@ export class MeUserResponseDto {
   country?: string | null;
   age?: number | null;
   isVerified!: boolean;
+  isOnline!: boolean;
+  isTyping!: boolean;
+  lastOnline?: Date | null;
   bio?: string | null;
 }
 

@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Linghuist Chat Tester</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: #111827;
+        --panel-soft: #1f2937;
+        --line: #334155;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --green: #10b981;
+        --blue: #3b82f6;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        color: var(--text);
+        background: linear-gradient(160deg, #020617, #0f172a);
+        height: 100vh;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: 12px;
+        height: 100%;
+        padding: 12px;
+      }
+      .side,
+      .chat {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .section {
+        padding: 12px;
+        border-bottom: 1px solid #1e293b;
+      }
+      .section:last-child {
+        border-bottom: none;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 18px;
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+      }
+      .hint,
+      .status {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .status.online {
+        color: var(--green);
+      }
+      .status.offline {
+        color: #f59e0b;
+      }
+      label {
+        display: block;
+        margin: 8px 0 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      input,
+      textarea,
+      button {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 8px;
+        background: #0b1220;
+        color: var(--text);
+      }
+      textarea {
+        resize: vertical;
+        min-height: 70px;
+      }
+      button {
+        cursor: pointer;
+        border: none;
+        background: var(--blue);
+      }
+      button.secondary {
+        background: #374151;
+      }
+      button.small {
+        width: auto;
+        padding: 4px 8px;
+        font-size: 12px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        border-bottom: 1px solid #1e293b;
+        background: var(--panel-soft);
+      }
+      .chat-feed {
+        height: calc(100vh - 260px);
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .bubble {
+        max-width: 70%;
+        border-radius: 14px;
+        padding: 8px 10px;
+        font-size: 14px;
+        line-height: 1.35;
+      }
+      .bubble.me {
+        align-self: flex-end;
+        background: #2563eb;
+      }
+      .bubble.other {
+        align-self: flex-start;
+        background: #1e293b;
+      }
+      .meta {
+        margin-top: 4px;
+        font-size: 11px;
+        color: #cbd5e1;
+      }
+      .typing {
+        min-height: 18px;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 0 12px;
+      }
+      .composer {
+        border-top: 1px solid #1e293b;
+        padding: 10px 12px;
+        background: var(--panel-soft);
+      }
+      .composer-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+      }
+      .notifications {
+        max-height: 160px;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .notification {
+        border: 1px solid #263043;
+        border-radius: 8px;
+        padding: 8px;
+        background: #0b1220;
+      }
+      .notification.unread {
+        border-color: #10b981;
+      }
+      .logs {
+        max-height: 180px;
+        overflow: auto;
+        background: #020617;
+        border: 1px solid #1e293b;
+        border-radius: 8px;
+        padding: 8px;
+        white-space: pre-wrap;
+        font-size: 12px;
+      }
+      .chats-list {
+        max-height: 220px;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .chat-item {
+        border: 1px solid #263043;
+        border-radius: 8px;
+        padding: 8px;
+        background: #0b1220;
+        cursor: pointer;
+      }
+      .chat-item.active {
+        border-color: #3b82f6;
+        background: #0f1a31;
+      }
+      .chat-item .title {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .chat-item .sub {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      @media (max-width: 1000px) {
+        .layout {
+          grid-template-columns: 1fr;
+          height: auto;
+        }
+        .chat-feed {
+          height: 380px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="side">
+        <div class="section">
+          <h1>Linghuist Tester</h1>
+          <div id="socketStatus" class="status offline">Socket: disconnected</div>
+        </div>
+
+        <div class="section">
+          <h2>Config</h2>
+          <label for="httpBase">HTTP Base URL</label>
+          <input id="httpBase" value="http://localhost:3000/api" />
+          <label for="socketUrl">Socket URL</label>
+          <input id="socketUrl" value="http://localhost:3000/api/user" />
+          <label for="currentChat">Selected Chat</label>
+          <input id="currentChat" placeholder="Select chat from list below" readonly />
+        </div>
+
+        <div class="section">
+          <h2>Chats</h2>
+          <button id="getChatsBtn" class="secondary">Refresh Chats</button>
+          <div id="chatsList" class="chats-list" style="margin-top: 8px"></div>
+        </div>
+
+        <div class="section">
+          <h2>Auth</h2>
+          <label for="email">Email</label>
+          <input id="email" type="email" />
+          <label for="password">Password</label>
+          <input id="password" type="password" />
+          <label for="confirmPassword">Confirm Password</label>
+          <input id="confirmPassword" type="password" />
+          <div class="row">
+            <button id="signupBtn">Signup</button>
+            <button id="loginBtn">Login</button>
+          </div>
+          <div class="row">
+            <button id="requestResetBtn" class="secondary">Request Reset</button>
+            <button id="updatePasswordBtn" class="secondary">Update Password</button>
+          </div>
+          <label for="accessToken">Access Token</label>
+          <textarea id="accessToken"></textarea>
+          <label for="refreshToken">Refresh Token</label>
+          <textarea id="refreshToken"></textarea>
+        </div>
+
+        <div class="section">
+          <h2>Connection</h2>
+          <div class="row">
+            <button id="connectBtn">Connect</button>
+            <button id="disconnectBtn" class="secondary">Disconnect</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Logs</h2>
+          <div id="logs" class="logs"></div>
+        </div>
+      </aside>
+
+      <main class="chat">
+        <div class="chat-header">
+          <div>
+            <div><strong>Chat View</strong></div>
+            <div class="hint">Message bubbles + notifications test</div>
+          </div>
+          <div>
+            <button id="getMeBtn" class="small secondary">Get Me</button>
+            <button id="getNotificationsBtn" class="small secondary">Refresh Notifications</button>
+          </div>
+        </div>
+
+        <div id="chatFeed" class="chat-feed"></div>
+        <div id="typingIndicator" class="typing"></div>
+
+        <div class="composer">
+          <div class="composer-row">
+            <input id="chatContent" placeholder="Type a message..." />
+            <button id="sendMessageBtn">Send</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Notifications</h2>
+          <div id="notificationsList" class="notifications"></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+      let socket = null;
+      let me = null;
+      let activeChatId = '';
+      let chatsCache = [];
+      let typingSent = false;
+
+      const els = {
+        httpBase: document.getElementById('httpBase'),
+        socketUrl: document.getElementById('socketUrl'),
+        currentChat: document.getElementById('currentChat'),
+        email: document.getElementById('email'),
+        password: document.getElementById('password'),
+        confirmPassword: document.getElementById('confirmPassword'),
+        accessToken: document.getElementById('accessToken'),
+        refreshToken: document.getElementById('refreshToken'),
+        chatContent: document.getElementById('chatContent'),
+        logs: document.getElementById('logs'),
+        socketStatus: document.getElementById('socketStatus'),
+        chatFeed: document.getElementById('chatFeed'),
+        typingIndicator: document.getElementById('typingIndicator'),
+        notificationsList: document.getElementById('notificationsList'),
+        chatsList: document.getElementById('chatsList'),
+      };
+
+      function log(title, payload) {
+        const line =
+          '[' + new Date().toLocaleTimeString() + '] ' + title + '\n' + (typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2)) + '\n\n';
+        els.logs.textContent = line + els.logs.textContent;
+      }
+
+      function updateSocketStatus(connected) {
+        els.socketStatus.textContent = connected ? 'Socket: connected' : 'Socket: disconnected';
+        els.socketStatus.className = connected ? 'status online' : 'status offline';
+      }
+
+      function pushMessageBubble(message) {
+        const div = document.createElement('div');
+        const mine = me && message.senderId && message.senderId === me.id;
+        const senderLabel = message.senderName || message.senderId || 'unknown';
+        const safeContent = message.content || '(no content)';
+        div.className = 'bubble ' + (mine ? 'me' : 'other');
+        div.innerHTML =
+          '<div>' +
+          safeContent +
+          '</div><div class="meta">' +
+          senderLabel +
+          ' - ' +
+          new Date(message.createdAt || Date.now()).toLocaleTimeString() +
+          '</div>';
+        els.chatFeed.appendChild(div);
+        els.chatFeed.scrollTop = els.chatFeed.scrollHeight;
+      }
+
+      function setTyping(text) {
+        els.typingIndicator.textContent = text || '';
+      }
+
+      async function api(path, method, body, withAuth = false) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (withAuth && els.accessToken.value.trim()) {
+          headers.Authorization = 'Bearer ' + els.accessToken.value.trim();
+        }
+        const response = await fetch(els.httpBase.value.trim() + path, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        const json = await response.json().catch(() => ({}));
+        log(method + ' ' + path + ' -> ' + response.status, json);
+        return { response, json };
+      }
+
+      function bind(id, handler) {
+        document.getElementById(id).addEventListener('click', handler);
+      }
+
+      async function getMe() {
+        const { json } = await api('/user/me', 'GET', null, true);
+        if (json && json.data) {
+          me = json.data;
+        }
+      }
+
+      async function getNotifications() {
+        const { json } = await api('/user/notifications/list?page=1&limit=20', 'GET', null, true);
+        const notifications = (json && json.data && json.data.notifications) || [];
+        els.notificationsList.innerHTML = '';
+        notifications.forEach((n) => {
+          const row = document.createElement('div');
+          row.className = 'notification ' + (n.read ? '' : 'unread');
+          row.innerHTML =
+            '<div><strong>' +
+            n.type +
+            '</strong> (' +
+            (n.read ? 'read' : 'unread') +
+            ')</div>' +
+            '<div class="hint">id: ' +
+            n.id +
+            '</div>' +
+            '<div class="hint">entity: ' +
+            (n.entityId || '-') +
+            '</div>';
+          if (!n.read) {
+            const btn = document.createElement('button');
+            btn.className = 'small';
+            btn.textContent = 'Mark as read';
+            btn.addEventListener('click', async () => {
+              await api('/user/notifications/' + n.id + '/read', 'PUT', {}, true);
+              await getNotifications();
+            });
+            row.appendChild(btn);
+          }
+          els.notificationsList.appendChild(row);
+        });
+      }
+
+      function renderChats(chats) {
+        chatsCache = chats;
+        els.chatsList.innerHTML = '';
+        chats.forEach((chat) => {
+          const item = document.createElement('div');
+          item.className = 'chat-item' + (activeChatId === chat.chatId ? ' active' : '');
+          const lastMessageText = chat.lastMessagePreview || 'No messages yet';
+          const lastAt = chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleString() : '-';
+          item.innerHTML =
+            '<div class="title">' +
+            (chat.interlocutorName || 'Unknown user') +
+            '</div>' +
+            '<div class="sub">chatId: ' +
+            chat.chatId +
+            '</div>' +
+            '<div class="sub">' +
+            lastMessageText +
+            '</div>' +
+            '<div class="sub">last: ' +
+            lastAt +
+            '</div>';
+          item.addEventListener('click', async () => {
+            await selectChat(chat.chatId);
+          });
+          els.chatsList.appendChild(item);
+        });
+      }
+
+      async function getChats() {
+        const { json } = await api('/user/chats/list', 'GET', null, true);
+        const chats = (json && json.data && json.data.chats) || [];
+        renderChats(chats);
+      }
+
+      function getActiveChatMeta() {
+        return chatsCache.find((chat) => chat.chatId === activeChatId) || null;
+      }
+
+      async function loadChatMessages(chatId) {
+        const { json } = await api('/user/chats/' + chatId + '/messages', 'GET', null, true);
+        const messages = (json && json.data && json.data.messages) || [];
+        els.chatFeed.innerHTML = '';
+        messages.forEach((message) => pushMessageBubble(message));
+      }
+
+      function connectSocket() {
+        if (socket) {
+          socket.disconnect();
+        }
+
+        const token = els.accessToken.value.trim();
+        socket = io(els.socketUrl.value.trim(), {
+          transports: ['websocket'],
+          auth: { token },
+          extraHeaders: token ? { Authorization: 'Bearer ' + token } : undefined,
+        });
+
+        socket.on('connect', () => {
+          updateSocketStatus(true);
+          log('socket connect', { id: socket.id });
+          if (activeChatId) {
+            emit('chat:join', { chatId: activeChatId });
+          }
+        });
+        socket.on('disconnect', (reason) => {
+          updateSocketStatus(false);
+          setTyping('');
+          typingSent = false;
+          log('socket disconnect', { reason: reason });
+        });
+        socket.on('connect_error', (error) => log('socket connect_error', error.message));
+
+        socket.on('presence:updated', (data) => log('presence:updated', data));
+        socket.on('chat:typing', (data) => {
+          log('chat:typing', data);
+          if (!activeChatId || data.chatId !== activeChatId) return;
+          const mine = me && data.userId === me.id;
+          if (data.isTyping && !mine) {
+            const activeChat = getActiveChatMeta();
+            const typingName = (activeChat && activeChat.interlocutorName) || data.userId;
+            setTyping(typingName + ' is typing...');
+          } else {
+            setTyping('');
+          }
+        });
+        socket.on('chat:message', (data) => {
+          log('chat:message', data);
+          if (activeChatId && data.chatId === activeChatId) {
+            data.senderName = data.senderName || (data.senderId === me?.id ? me?.name || me?.username || me?.id : null);
+            pushMessageBubble(data);
+            setTyping('');
+          }
+          getNotifications();
+          getChats();
+        });
+      }
+
+      async function waitForSocketConnect(timeoutMs = 4000) {
+        if (socket && socket.connected) {
+          return true;
+        }
+        if (!socket) {
+          return false;
+        }
+        return await new Promise((resolve) => {
+          let done = false;
+          const onConnect = () => {
+            if (done) return;
+            done = true;
+            cleanup();
+            resolve(true);
+          };
+          const onError = () => {
+            if (done) return;
+            done = true;
+            cleanup();
+            resolve(false);
+          };
+          const timer = setTimeout(() => {
+            if (done) return;
+            done = true;
+            cleanup();
+            resolve(false);
+          }, timeoutMs);
+          const cleanup = () => {
+            clearTimeout(timer);
+            socket.off('connect', onConnect);
+            socket.off('connect_error', onError);
+          };
+          socket.on('connect', onConnect);
+          socket.on('connect_error', onError);
+        });
+      }
+
+      async function ensureSocketConnected() {
+        if (!socket || !socket.connected) {
+          connectSocket();
+        }
+        return await waitForSocketConnect();
+      }
+
+      async function selectChat(chatId) {
+        if (!chatId) return;
+        if (activeChatId && activeChatId !== chatId) {
+          if (typingSent) {
+            emit('chat:typing', { chatId: activeChatId, isTyping: false });
+            typingSent = false;
+          }
+          emit('chat:leave', { chatId: activeChatId });
+        }
+        activeChatId = chatId;
+        els.currentChat.value = chatId;
+        els.chatFeed.innerHTML = '';
+        setTyping('');
+        renderChats(chatsCache);
+        await loadChatMessages(chatId);
+        const connected = await ensureSocketConnected();
+        if (!connected) {
+          log('chat select failed', 'socket did not connect');
+          return;
+        }
+        emit('chat:join', { chatId });
+        log('chat selected', { chatId });
+      }
+
+      function emit(eventName, payload) {
+        if (!socket || !socket.connected) {
+          log('emit ' + eventName, 'socket not connected');
+          return;
+        }
+        socket.emit(eventName, payload);
+        log('emit ' + eventName, payload);
+      }
+
+      bind('signupBtn', async () => {
+        await api('/auth/signup', 'POST', {
+          email: els.email.value.trim(),
+          password: els.password.value,
+          confirmPassword: els.confirmPassword.value,
+        });
+      });
+
+      bind('loginBtn', async () => {
+        const { json } = await api('/auth/login', 'POST', {
+          email: els.email.value.trim(),
+          password: els.password.value,
+        });
+        if (json && json.data) {
+          els.accessToken.value = json.data.access_token || '';
+          els.refreshToken.value = json.data.refresh_token || '';
+          await getMe();
+          await getNotifications();
+          await getChats();
+        }
+      });
+
+      bind('requestResetBtn', async () => {
+        await api('/auth/request-password-reset', 'POST', { email: els.email.value.trim() });
+      });
+
+      bind('updatePasswordBtn', async () => {
+        await api('/auth/update-password', 'POST', {
+          accessToken: els.accessToken.value.trim(),
+          refreshToken: els.refreshToken.value.trim(),
+          newPassword: els.password.value,
+        });
+      });
+
+      bind('connectBtn', async () => {
+        const connected = await ensureSocketConnected();
+        if (!connected) {
+          log('connect', 'socket did not connect');
+        }
+      });
+
+      bind('disconnectBtn', () => {
+        if (socket) {
+          socket.disconnect();
+        }
+      });
+
+      bind('sendMessageBtn', async () => {
+        const content = els.chatContent.value.trim();
+        if (!content || !activeChatId) return;
+        const connected = await ensureSocketConnected();
+        if (!connected) {
+          log('send blocked', 'socket not connected');
+          return;
+        }
+        emit('chat:join', { chatId: activeChatId });
+        emit('chat:message', {
+          chatId: activeChatId,
+          content: content,
+        });
+        els.chatContent.value = '';
+        if (typingSent) {
+          emit('chat:typing', { chatId: activeChatId, isTyping: false });
+          typingSent = false;
+        }
+      });
+
+      els.chatContent.addEventListener('input', () => {
+        if (!activeChatId || !socket || !socket.connected) return;
+        const hasContent = els.chatContent.value.trim().length > 0;
+        if (hasContent && !typingSent) {
+          emit('chat:typing', { chatId: activeChatId, isTyping: true });
+          typingSent = true;
+        }
+        if (!hasContent && typingSent) {
+          emit('chat:typing', { chatId: activeChatId, isTyping: false });
+          typingSent = false;
+        }
+      });
+
+      bind('getMeBtn', getMe);
+      bind('getNotificationsBtn', getNotifications);
+      bind('getChatsBtn', getChats);
+    </script>
+  </body>
+</html>

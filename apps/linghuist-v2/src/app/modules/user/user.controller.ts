@@ -22,6 +22,10 @@ import { UserService } from './user.service';
 import { GetUserByUsernameResponseEnvelopeDto } from './dto/get_user_by_username_response.dto';
 import { GetAllUsersResponseEnvelopeDto } from './dto/get_all_users_response.dto';
 import { AVATAR_UPLOAD_MAX_BYTES } from './user.constants';
+import { UserNotificationsQueryDto } from './dto/user_notifications_query.dto';
+import { GetUserNotificationsResponseEnvelopeDto } from './dto/get_user_notifications_response.dto';
+import { GetUserChatsResponseEnvelopeDto } from './dto/get_user_chats_response.dto';
+import { GetChatMessagesResponseEnvelopeDto } from './dto/get_chat_messages_response.dto';
 
 type UploadedImageFile = {
   buffer: Buffer;
@@ -90,6 +94,39 @@ export class UserController {
   @Post('me/delete')
   deleteMe(@CurrentUserId() userId: string, @Body() body: DeleteMeDto): Promise<ApiEnvelope<null>> {
     return this.userService.deleteMe(userId, body.password);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('notifications/list')
+  getMyNotifications(
+    @CurrentUserId() userId: string,
+    @Query() query: UserNotificationsQueryDto,
+  ): Promise<GetUserNotificationsResponseEnvelopeDto> {
+    return this.userService.getMyNotifications(userId, query.page ?? 1, query.limit);
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('notifications/:notificationId/read')
+  markNotificationAsRead(
+    @CurrentUserId() userId: string,
+    @Param('notificationId') notificationId: string,
+  ): Promise<ApiEnvelope<null>> {
+    return this.userService.markNotificationAsRead(userId, notificationId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('chats/list')
+  getMyChats(@CurrentUserId() userId: string): Promise<GetUserChatsResponseEnvelopeDto> {
+    return this.userService.getMyChats(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('chats/:chatId/messages')
+  getChatMessages(
+    @CurrentUserId() userId: string,
+    @Param('chatId') chatId: string,
+  ): Promise<GetChatMessagesResponseEnvelopeDto> {
+    return this.userService.getChatMessages(userId, chatId);
   }
 
   @UseGuards(AuthGuard)
