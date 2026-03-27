@@ -8,7 +8,9 @@ import { GetUserNotificationsResponseEnvelopeDto } from './dto/get_user_notifica
 import { MeUserResponseEnvelopeDto } from './dto/me_user_response.dto';
 import { UpdateMeDto } from './dto/update_me.dto';
 import type { GetAllUsersFilters, UploadedImageFile } from './types/user.types';
+import { FriendRequestsListEnvelopeDto } from './dto/friend_requests_response.dto';
 import { UserChatService } from './user-chat.service';
+import { UserFriendService } from './user-friend.service';
 import { UserNotificationService } from './user-notification.service';
 import { UserProfileService } from './user-profile.service';
 import { USER_NOTIFICATIONS_DEFAULT_PAGE_SIZE } from './user.constants';
@@ -17,6 +19,7 @@ import { USER_NOTIFICATIONS_DEFAULT_PAGE_SIZE } from './user.constants';
 export class UserService {
   constructor(
     private readonly userProfileService: UserProfileService,
+    private readonly userFriendService: UserFriendService,
     private readonly userChatService: UserChatService,
     private readonly userNotificationService: UserNotificationService,
   ) {}
@@ -70,6 +73,11 @@ export class UserService {
     return this.userChatService.isChatParticipant(userId, chatId);
   }
 
+  /** Facade: membership plus block/friend rules for chat rooms. */
+  async assertChatRoomAccess(userId: string, chatId: string): Promise<void> {
+    return this.userChatService.assertChatRoomAccess(userId, chatId);
+  }
+
   /** Facade: participant user IDs for socket fan-out to personal rooms. */
   async getChatParticipantUserIds(chatId: string): Promise<string[]> {
     return this.userChatService.getChatParticipantUserIds(chatId);
@@ -90,7 +98,7 @@ export class UserService {
     userId: string,
     messageId: string,
     correctedText: string,
-  ): Promise<ApiEnvelope<{ messageId: string; correctedText: string }>> {
+  ) {
     return this.userChatService.manuallyCorrectMessage(userId, messageId, correctedText);
   }
 
@@ -124,6 +132,11 @@ export class UserService {
     return this.userChatService.getMyChats(userId);
   }
 
+  /** Facade: find or create a DM with an accepted friend. */
+  async ensureDirectChatWithUser(userId: string, otherUserId: string) {
+    return this.userChatService.ensureDirectChatWithUser(userId, otherUserId);
+  }
+
   /** Facade method for loading message history of a chat. */
   async getChatMessages(userId: string, chatId: string): Promise<GetChatMessagesResponseEnvelopeDto> {
     return this.userChatService.getChatMessages(userId, chatId);
@@ -135,11 +148,41 @@ export class UserService {
     page: number,
     pageSize = USER_NOTIFICATIONS_DEFAULT_PAGE_SIZE,
   ): Promise<GetUserNotificationsResponseEnvelopeDto> {
-    return this.userNotificationService.getMyNotifications(userId, page, pageSize);
+    const chatUnreadThreadCount = await this.userChatService.getUnreadChatThreadCount(userId);
+    return this.userNotificationService.getMyNotifications(userId, page, pageSize, chatUnreadThreadCount);
+  }
+
+  /** Unread chat threads vs social notification bell (excludes CHAT_MESSAGE rows). */
+  async getNavigationBadges(userId: string): Promise<{ unreadChatThreads: number; socialUnreadCount: number }> {
+    const [unreadChatThreads, socialUnreadCount] = await Promise.all([
+      this.userChatService.getUnreadChatThreadCount(userId),
+      this.userNotificationService.getSocialUnreadCount(userId),
+    ]);
+    return { unreadChatThreads, socialUnreadCount };
   }
 
   /** Facade method for marking a notification as read. */
   async markNotificationAsRead(userId: string, notificationId: string): Promise<ApiEnvelope<null>> {
     return this.userNotificationService.markNotificationAsRead(userId, notificationId);
+  }
+
+  sendFriendRequest(userId: string, receiverId: string): Promise<ApiEnvelope<{ requestId: string }>> {
+    return this.userFriendService.sendFriendRequest(userId, receiverId);
+  }
+
+  listIncomingFriendRequests(userId: string): Promise<FriendRequestsListEnvelopeDto> {
+    return this.userFriendService.listIncomingFriendRequests(userId);
+  }
+
+  listOutgoingFriendRequests(userId: string): Promise<FriendRequestsListEnvelopeDto> {
+    return this.userFriendService.listOutgoingFriendRequests(userId);
+  }
+
+  acceptFriendRequest(userId: string, requestId: string) {
+    return this.userFriendService.acceptFriendRequest(userId, requestId);
+  }
+
+  rejectFriendRequest(userId: string, requestId: string): Promise<ApiEnvelope<{ requestId: string }>> {
+    return this.userFriendService.rejectFriendRequest(userId, requestId);
   }
 }

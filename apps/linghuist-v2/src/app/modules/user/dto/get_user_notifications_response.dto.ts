@@ -13,7 +13,10 @@ export class UserNotificationItemDto {
 
 export class UserNotificationsDataDto {
   notifications!: UserNotificationItemDto[];
+  /** Unread social notifications only (excludes CHAT_MESSAGE). */
   unreadCount!: number;
+  /** Chats with at least one unread incoming message (same rules as chat list). */
+  chatUnreadThreadCount!: number;
   page!: number;
   pageSize!: number;
   total!: number;

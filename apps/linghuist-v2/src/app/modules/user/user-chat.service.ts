@@ -1,8 +1,16 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { FriendRequestStatus } from '@prisma/client';
 import { PrismaService } from '@linghuist-v2/prisma';
 import type { ApiEnvelope } from '../../common/api-envelope.types';
 import { GetChatMessagesResponseEnvelopeDto } from './dto/get_chat_messages_response.dto';
 import { GetUserChatsResponseEnvelopeDto } from './dto/get_user_chats_response.dto';
+import { UserNotificationService } from './user-notification.service';
 import { CHAT_MESSAGE_MAX_LENGTH } from './user.gateway.constants';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -69,7 +77,24 @@ function toSocketMessagePayload(message: {
 
 @Injectable()
 export class UserChatService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly userNotificationService: UserNotificationService,
+  ) {}
+
+  /**
+   * Ensures the user is in the chat, not blocked with any other participant,
+   * and has an accepted friend relationship with every other participant.
+   */
+  async assertChatRoomAccess(userId: string, chatId: string): Promise<void> {
+    const isParticipant = await this.isChatParticipant(userId, chatId);
+    if (!isParticipant) {
+      throw new NotFoundException('Chat not found');
+    }
+    const participantIds = await this.getChatParticipantUserIds(chatId);
+    const otherUserIds = participantIds.filter((id) => id !== userId);
+    await this.assertSocialAllowsChatWith(userId, otherUserIds);
+  }
 
   /** Updates online/offline presence timestamps and typing reset rules. */
   async setOnlineStatus(userId: string, isOnline: boolean): Promise<void> {
@@ -117,6 +142,7 @@ export class UserChatService {
 
   /** Creates a chat message persisted to the database. */
   async createChatMessage(userId: string, chatId: string, content: string) {
+    await this.assertChatRoomAccess(userId, chatId);
     const created = await this.prismaService.message.create({
       data: {
         chatId,
@@ -125,15 +151,19 @@ export class UserChatService {
       },
       select: messageSocketPayloadSelect,
     });
+    const recipientUserIds = (await this.getChatParticipantUserIds(chatId)).filter((id) => id !== userId);
+    await this.userNotificationService.notifyNewChatMessage({
+      senderId: userId,
+      chatId,
+      messageId: created.id,
+      recipientUserIds,
+    });
     return toSocketMessagePayload(created);
   }
 
   /** Marks unread incoming messages as read and returns changed message ids. */
   async markChatAsRead(userId: string, chatId: string): Promise<string[]> {
-    const isParticipant = await this.isChatParticipant(userId, chatId);
-    if (!isParticipant) {
-      throw new NotFoundException('Chat not found');
-    }
+    await this.assertChatRoomAccess(userId, chatId);
 
     const unreadMessages = await this.prismaService.message.findMany({
       where: {
@@ -155,6 +185,8 @@ export class UserChatService {
       data: { read: true },
     });
 
+    await this.userNotificationService.markChatMessageNotificationsReadForChat(userId, chatId);
+
     return unreadMessages.map((message) => message.id);
   }
 
@@ -163,7 +195,14 @@ export class UserChatService {
     userId: string,
     messageId: string,
     correctedText: string,
-  ): Promise<ApiEnvelope<{ messageId: string; correctedText: string }>> {
+  ): Promise<
+    ApiEnvelope<{
+      messageId: string;
+      correctedText: string;
+      chatId: string;
+      message: ReturnType<typeof toSocketMessagePayload>;
+    }>
+  > {
     const message = await this.prismaService.message.findUnique({
       where: { id: messageId },
       select: { id: true, chatId: true, senderId: true, correctedText: true },
@@ -172,10 +211,7 @@ export class UserChatService {
       throw new NotFoundException('Message not found');
     }
 
-    const isParticipant = await this.isChatParticipant(userId, message.chatId);
-    if (!isParticipant) {
-      throw new NotFoundException('Message not found');
-    }
+    await this.assertChatRoomAccess(userId, message.chatId);
     if (message.senderId === userId) {
       throw new BadRequestException('You can only correct the other user messages');
     }
@@ -188,11 +224,18 @@ export class UserChatService {
       data: { correctedText },
     });
 
+    const updated = await this.prismaService.message.findUniqueOrThrow({
+      where: { id: messageId },
+      select: messageSocketPayloadSelect,
+    });
+
     return {
       message: 'Message corrected successfully',
       data: {
         messageId,
         correctedText,
+        chatId: message.chatId,
+        message: toSocketMessagePayload(updated),
       },
     };
   }
@@ -212,10 +255,7 @@ export class UserChatService {
       throw new NotFoundException('Message not found');
     }
 
-    const isParticipant = await this.isChatParticipant(userId, message.chatId);
-    if (!isParticipant) {
-      throw new NotFoundException('Message not found');
-    }
+    await this.assertChatRoomAccess(userId, message.chatId);
     if (message.senderId === userId) {
       throw new BadRequestException('You can only translate the other user messages');
     }
@@ -257,10 +297,7 @@ export class UserChatService {
     userLanguage: string,
     chatLanguage?: string,
   ): Promise<ApiEnvelope<{ suggestion: string; translatedSuggestion: string }>> {
-    const isParticipant = await this.isChatParticipant(userId, chatId);
-    if (!isParticipant) {
-      throw new NotFoundException('Chat not found');
-    }
+    await this.assertChatRoomAccess(userId, chatId);
 
     const recentMessages = await this.prismaService.message.findMany({
       where: { chatId },
@@ -322,14 +359,54 @@ export class UserChatService {
     };
   }
 
+  /**
+   * Returns an existing 1:1 chat id with `otherUserId`, or creates `Chat` + participants.
+   * Requires accepted friendship and no block (same rules as messaging).
+   */
+  async ensureDirectChatWithUser(userId: string, otherUserId: string): Promise<ApiEnvelope<{ chatId: string }>> {
+    if (otherUserId === userId) {
+      throw new BadRequestException('Invalid recipient');
+    }
+    const otherExists = await this.prismaService.user.findUnique({
+      where: { id: otherUserId },
+      select: { id: true },
+    });
+    if (!otherExists) {
+      throw new NotFoundException('User not found');
+    }
+    await this.assertSocialAllowsChatWith(userId, [otherUserId]);
+
+    const existingId = await this.findDirectChatBetween(userId, otherUserId);
+    if (existingId) {
+      return { message: 'Chat ready', data: { chatId: existingId } };
+    }
+
+    const created = await this.prismaService.$transaction(async (tx) => {
+      const chat = await tx.chat.create({ data: {} });
+      await tx.chatParticipant.createMany({
+        data: [
+          { chatId: chat.id, userId },
+          { chatId: chat.id, userId: otherUserId },
+        ],
+      });
+      return chat;
+    });
+
+    return { message: 'Chat created', data: { chatId: created.id } };
+  }
+
   /** Returns chat list with interlocutor metadata and latest message preview. */
   async getMyChats(userId: string): Promise<GetUserChatsResponseEnvelopeDto> {
+    const allowedIds = await this.getAllowedChatIdsForUser(userId);
+    if (allowedIds.length === 0) {
+      return {
+        message: 'Chats retrieved successfully',
+        data: { chats: [] },
+      };
+    }
+
     const chats = await this.prismaService.chat.findMany({
-      where: {
-        participants: {
-          some: { userId },
-        },
-      },
+      where: { id: { in: allowedIds } },
       select: {
         id: true,
         participants: {
@@ -356,6 +433,17 @@ export class UserChatService {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
 
+    const unreadGroups = await this.prismaService.message.groupBy({
+      by: ['chatId'],
+      where: {
+        chatId: { in: allowedIds },
+        read: false,
+        senderId: { not: userId },
+      },
+      _count: { _all: true },
+    });
+    const unreadByChatId = Object.fromEntries(unreadGroups.map((g) => [g.chatId, g._count._all]));
+
     return {
       message: 'Chats retrieved successfully',
       data: {
@@ -370,10 +458,29 @@ export class UserChatService {
             interlocutorUsername: interlocutor?.username ?? null,
             lastMessagePreview: messageDisplayText(lastMessage?.content ?? null, lastMessage?.editedContent ?? null),
             lastMessageAt: lastMessage?.createdAt ?? null,
+            unreadIncomingCount: unreadByChatId[chat.id] ?? 0,
           };
         }),
       },
     };
+  }
+
+  /** Chats (social-allowed) with at least one unread incoming message. */
+  async getUnreadChatThreadCount(userId: string): Promise<number> {
+    const allowedIds = await this.getAllowedChatIdsForUser(userId);
+    if (allowedIds.length === 0) {
+      return 0;
+    }
+    const grouped = await this.prismaService.message.groupBy({
+      by: ['chatId'],
+      where: {
+        chatId: { in: allowedIds },
+        read: false,
+        senderId: { not: userId },
+      },
+      _count: { _all: true },
+    });
+    return grouped.length;
   }
 
   /** Updates own message text, clears cached translation, preserves original in `content`. */
@@ -402,15 +509,12 @@ export class UserChatService {
     if (!message) {
       throw new NotFoundException('Message not found');
     }
+    await this.assertChatRoomAccess(userId, message.chatId);
     if (message.senderId !== userId) {
       throw new BadRequestException('You can only edit your own messages');
     }
     if (message.editedContent != null && message.editedContent.trim() !== '') {
       throw new BadRequestException('You can only edit a message once');
-    }
-    const isParticipant = await this.isChatParticipant(userId, message.chatId);
-    if (!isParticipant) {
-      throw new NotFoundException('Message not found');
     }
     const previous = messageDisplayText(message.content, message.editedContent);
     if (trimmed === previous) {
@@ -437,10 +541,7 @@ export class UserChatService {
 
   /** Returns full chronological message history for a chat participant. */
   async getChatMessages(userId: string, chatId: string): Promise<GetChatMessagesResponseEnvelopeDto> {
-    const isParticipant = await this.isChatParticipant(userId, chatId);
-    if (!isParticipant) {
-      throw new NotFoundException('Chat not found');
-    }
+    await this.assertChatRoomAccess(userId, chatId);
 
     const messages = await this.prismaService.message.findMany({
       where: { chatId },
@@ -485,6 +586,112 @@ export class UserChatService {
         })),
       },
     };
+  }
+
+  /** 1:1 thread between exactly these two users, if any. */
+  private async findDirectChatBetween(userId: string, otherUserId: string): Promise<string | null> {
+    const rows = await this.prismaService.chat.findMany({
+      where: {
+        AND: [
+          { participants: { some: { userId } } },
+          { participants: { some: { userId: otherUserId } } },
+          {
+            participants: {
+              every: {
+                userId: { in: [userId, otherUserId] },
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        _count: { select: { participants: true } },
+      },
+    });
+    const dm = rows.find((r) => r._count.participants === 2);
+    return dm?.id ?? null;
+  }
+
+  private async getAllowedChatIdsForUser(userId: string): Promise<string[]> {
+    const chats = await this.prismaService.chat.findMany({
+      where: {
+        participants: { some: { userId } },
+      },
+      select: {
+        id: true,
+        participants: {
+          select: {
+            user: { select: { id: true } },
+          },
+        },
+      },
+    });
+    const ids: string[] = [];
+    for (const chat of chats) {
+      const otherUserIds = chat.participants.map((p) => p.user.id).filter((id) => id !== userId);
+      if (await this.socialAllowsChatWith(userId, otherUserIds)) {
+        ids.push(chat.id);
+      }
+    }
+    return ids;
+  }
+
+  private async assertSocialAllowsChatWith(userId: string, otherUserIds: string[]): Promise<void> {
+    if (otherUserIds.length === 0) {
+      return;
+    }
+    for (const otherId of otherUserIds) {
+      if (await this.isBlockedPair(userId, otherId)) {
+        throw new ForbiddenException('You cannot use this chat');
+      }
+      if (!(await this.areAcceptedFriends(userId, otherId))) {
+        throw new ForbiddenException('You can only chat with accepted friends');
+      }
+    }
+  }
+
+  /** Non-throwing social check for list filters. */
+  private async socialAllowsChatWith(userId: string, otherUserIds: string[]): Promise<boolean> {
+    if (otherUserIds.length === 0) {
+      return true;
+    }
+    for (const otherId of otherUserIds) {
+      if (await this.isBlockedPair(userId, otherId)) {
+        return false;
+      }
+      if (!(await this.areAcceptedFriends(userId, otherId))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private async isBlockedPair(a: string, b: string): Promise<boolean> {
+    const block = await this.prismaService.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: a, blockedId: b },
+          { blockerId: b, blockedId: a },
+        ],
+      },
+      select: { id: true },
+    });
+    return Boolean(block);
+  }
+
+  private async areAcceptedFriends(a: string, b: string): Promise<boolean> {
+    const request = await this.prismaService.friendRequest.findFirst({
+      where: {
+        status: FriendRequestStatus.ACCEPTED,
+        OR: [
+          { senderId: a, receiverId: b },
+          { senderId: b, receiverId: a },
+        ],
+      },
+      select: { id: true },
+    });
+    return Boolean(request);
   }
 
   private async generateWithGroq(prompt: string, maxTokens: number): Promise<string> {

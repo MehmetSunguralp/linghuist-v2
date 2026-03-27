@@ -225,10 +225,19 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+        gap: 12px;
         padding: 14px 16px;
         border-bottom: 1px solid #1e293b;
         background: var(--panel-soft);
         flex-shrink: 0;
+      }
+      .chat-header .nav-tray {
+        margin-top: 0;
+        flex-shrink: 0;
+        justify-content: flex-end;
+      }
+      .chat-header .nav-tray-label {
+        display: none;
       }
       .chat-header strong {
         font-size: 1rem;
@@ -457,6 +466,73 @@
       .notification.unread {
         border-color: rgba(16, 185, 129, 0.45);
       }
+      .nav-tray {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+      }
+      .nav-tray-label {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        width: 100%;
+      }
+      .nav-icon-btn {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #0b1220;
+        border: 1px solid var(--line);
+        font-size: 1.25rem;
+        line-height: 1;
+        cursor: pointer;
+        user-select: none;
+        padding: 0;
+        font-family: inherit;
+        color: inherit;
+      }
+      .nav-badge {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 999px;
+        background: #dc2626;
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid var(--panel);
+      }
+      .nav-badge[hidden] {
+        display: none !important;
+      }
+      .chat-unread-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.25rem;
+        height: 1.25rem;
+        padding: 0 6px;
+        margin-left: 8px;
+        border-radius: 999px;
+        background: rgba(220, 38, 38, 0.9);
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        vertical-align: middle;
+      }
       .logs {
         max-height: 200px;
         overflow: auto;
@@ -494,6 +570,25 @@
             <span class="status-dot"></span>
             <span>Disconnected</span>
           </div>
+          <div class="nav-tray" aria-label="App navigation badges">
+            <span class="nav-tray-label">Navigator (like mobile app)</span>
+            <button
+              type="button"
+              class="nav-icon-btn nav-focus-chats"
+              title="Chats — jump to list; badge = threads with unread messages"
+            >
+              <span aria-hidden="true">💬</span>
+              <span id="navBadgeChat" class="nav-badge" hidden>0</span>
+            </button>
+            <button
+              type="button"
+              class="nav-icon-btn nav-focus-notifications"
+              title="Notifications — jump to panel; badge = social only (not chat)"
+            >
+              <span aria-hidden="true">🔔</span>
+              <span id="navBadgeNotif" class="nav-badge" hidden>0</span>
+            </button>
+          </div>
         </div>
 
         <div class="side-scroll">
@@ -513,8 +608,50 @@
             <button type="button" id="primaryAuthBtn" style="margin-top: 12px">Login</button>
           </div>
 
-          <div class="section">
+          <div class="accordion" id="accFriends">
+            <button type="button" class="accordion-trigger" aria-expanded="false">
+              <span>Friends (requests before chat)</span>
+              <span class="accordion-chevron">▸</span>
+            </button>
+            <div class="accordion-panel">
+              <p class="subtitle" style="margin: 0 0 8px">
+                Flow: <strong>send request</strong> → other account <strong>accepts</strong> → then
+                <strong>Open or create DM</strong> below. Discovery only lists users with a non-empty username.
+              </p>
+              <label>Discovery</label>
+              <button type="button" id="loadDiscoverBtn" class="secondary" style="margin-top: 8px">
+                Load people (GET /user/all/1)
+              </button>
+              <div id="discoverUsersList" class="notifications" style="margin-top: 10px; max-height: 220px"></div>
+              <label for="friendRequestReceiverId" style="margin-top: 12px">Send request by user id</label>
+              <input id="friendRequestReceiverId" placeholder="UUID of the person you want to add" />
+              <button type="button" id="sendFriendRequestBtn" class="secondary" style="margin-top: 8px">
+                Send friend request
+              </button>
+              <label style="margin-top: 14px">Incoming (accept / reject)</label>
+              <button type="button" id="refreshIncomingFrBtn" class="secondary small" style="margin-top: 6px">
+                Refresh incoming
+              </button>
+              <div id="incomingFriendRequestsList" class="notifications" style="margin-top: 10px"></div>
+              <label style="margin-top: 14px">Outgoing (pending)</label>
+              <button type="button" id="refreshOutgoingFrBtn" class="secondary small" style="margin-top: 6px">
+                Refresh outgoing
+              </button>
+              <div id="outgoingFriendRequestsList" class="notifications" style="margin-top: 10px"></div>
+            </div>
+          </div>
+
+          <div class="section" id="sectionChats">
             <label style="margin-top: 0">Available chats</label>
+            <p class="subtitle" style="margin: 6px 0 0">
+              Chats only appear for <strong>accepted friends</strong>. Use the <strong>Friends</strong> panel first,
+              then open a DM here (same rules as the API).
+            </p>
+            <label for="openDmUserId">Other user id (friend’s UUID)</label>
+            <input id="openDmUserId" placeholder="Paste id from /user/all/1 or profile" />
+            <button type="button" id="openDmBtn" class="secondary" style="margin-top: 8px">
+              Open or create DM
+            </button>
             <button type="button" id="getChatsBtn" class="secondary" style="margin-top: 8px">Refresh list</button>
             <div id="chatsList" class="chats-list" style="margin-top: 10px"></div>
           </div>
@@ -614,6 +751,24 @@
             <strong id="chatTitle">Chat</strong>
             <p class="subtitle" id="chatSubtitle">Select a chat from the list</p>
           </div>
+          <div class="nav-tray" aria-label="Navigator badges (same as sidebar)">
+            <button
+              type="button"
+              class="nav-icon-btn nav-focus-chats"
+              title="Chats — scroll to list; red = unread threads"
+            >
+              <span aria-hidden="true">💬</span>
+              <span id="navBadgeChatMain" class="nav-badge" hidden>0</span>
+            </button>
+            <button
+              type="button"
+              class="nav-icon-btn nav-focus-notifications"
+              title="Notifications — social only"
+            >
+              <span aria-hidden="true">🔔</span>
+              <span id="navBadgeNotifMain" class="nav-badge" hidden>0</span>
+            </button>
+          </div>
         </div>
         <div class="chat-feed-wrap">
           <div id="chatEmpty" class="empty-chat">Messages will appear here after you open a chat.</div>
@@ -644,6 +799,7 @@
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
+      const USER_SOCKET_NAV_BADGES = 'nav:badges:updated';
       let socket = null;
       let me = null;
       let activeChatId = '';
@@ -933,9 +1089,150 @@
         }
       }
 
+      function setNavBadgeDom(elId, n) {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        el.textContent = n > 99 ? '99+' : String(n);
+        el.hidden = n <= 0;
+      }
+
+      function applyNavBadges(payload) {
+        if (!payload || typeof payload !== 'object') return;
+        const chatN = Math.max(0, Number(payload.unreadChatThreads) || 0);
+        const socN = Math.max(0, Number(payload.socialUnreadCount) || 0);
+        setNavBadgeDom('navBadgeChat', chatN);
+        setNavBadgeDom('navBadgeNotif', socN);
+        setNavBadgeDom('navBadgeChatMain', chatN);
+        setNavBadgeDom('navBadgeNotifMain', socN);
+      }
+
+      async function refreshNavBadgesFromHttp() {
+        const { json } = await api('/user/notifications/list?page=1&limit=1', 'GET', null, true);
+        if (json && json.data) {
+          applyNavBadges({
+            unreadChatThreads: json.data.chatUnreadThreadCount,
+            socialUnreadCount: json.data.unreadCount,
+          });
+        }
+      }
+
+      async function loadDiscoverUsers() {
+        const host = document.getElementById('discoverUsersList');
+        if (!host) return;
+        host.innerHTML = '';
+        const { json } = await api('/user/all/1', 'GET', null, true);
+        const users = (json && json.data && json.data.users) || [];
+        if (users.length === 0) {
+          host.innerHTML =
+            '<div class="notification">No users returned. Ensure accounts have a <strong>username</strong> set (update-me).</div>';
+          return;
+        }
+        users.forEach((u) => {
+          const row = document.createElement('div');
+          row.className = 'notification';
+          const label = escapeHtml(u.name || u.username || u.id);
+          const id = escapeHtml(u.id);
+          row.innerHTML =
+            '<div><strong>' + label + '</strong></div><div class="sub" style="margin-top:4px;font-size:0.75rem;color:var(--muted)">' +
+            id +
+            '</div>';
+          const btn = document.createElement('button');
+          btn.className = 'small';
+          btn.style.marginTop = '8px';
+          btn.textContent = 'Send friend request';
+          btn.addEventListener('click', async () => {
+            await api('/user/friends/request', 'POST', { receiverId: u.id }, true);
+            await loadOutgoingFriendRequests();
+            await refreshNavBadgesFromHttp();
+          });
+          row.appendChild(btn);
+          host.appendChild(row);
+        });
+      }
+
+      async function loadIncomingFriendRequests() {
+        const host = document.getElementById('incomingFriendRequestsList');
+        if (!host) return;
+        host.innerHTML = '';
+        const { json } = await api('/user/friends/requests/incoming', 'GET', null, true);
+        const requests = (json && json.data && json.data.requests) || [];
+        if (requests.length === 0) {
+          host.innerHTML = '<div class="notification">No incoming requests.</div>';
+          return;
+        }
+        requests.forEach((r) => {
+          const row = document.createElement('div');
+          row.className = 'notification unread';
+          const p = r.peer || {};
+          const who = escapeHtml(p.name || p.username || p.id);
+          row.innerHTML =
+            '<div><strong>' + who + '</strong> · PENDING</div><div class="sub" style="margin-top:4px">' +
+            escapeHtml(r.id) +
+            '</div>';
+          const actions = document.createElement('div');
+          actions.style.marginTop = '8px';
+          const acc = document.createElement('button');
+          acc.className = 'small';
+          acc.textContent = 'Accept';
+          acc.addEventListener('click', async () => {
+            const { json: res } = await api('/user/friends/requests/' + r.id + '/accept', 'PUT', {}, true);
+            if (res && res.data && res.data.otherUserId) {
+              document.getElementById('openDmUserId').value = res.data.otherUserId;
+              log('Friends', 'Accepted. Prefilled DM field with friend id — click Open or create DM.');
+            }
+            await loadIncomingFriendRequests();
+            await loadOutgoingFriendRequests();
+            await getChats();
+            await refreshNavBadgesFromHttp();
+          });
+          const rej = document.createElement('button');
+          rej.className = 'small secondary';
+          rej.style.marginLeft = '8px';
+          rej.textContent = 'Reject';
+          rej.addEventListener('click', async () => {
+            await api('/user/friends/requests/' + r.id + '/reject', 'PUT', {}, true);
+            await loadIncomingFriendRequests();
+            await refreshNavBadgesFromHttp();
+          });
+          actions.appendChild(acc);
+          actions.appendChild(rej);
+          row.appendChild(actions);
+          host.appendChild(row);
+        });
+      }
+
+      async function loadOutgoingFriendRequests() {
+        const host = document.getElementById('outgoingFriendRequestsList');
+        if (!host) return;
+        host.innerHTML = '';
+        const { json } = await api('/user/friends/requests/outgoing', 'GET', null, true);
+        const requests = (json && json.data && json.data.requests) || [];
+        if (requests.length === 0) {
+          host.innerHTML = '<div class="notification">No outgoing pending requests.</div>';
+          return;
+        }
+        requests.forEach((r) => {
+          const row = document.createElement('div');
+          row.className = 'notification';
+          const p = r.peer || {};
+          const who = escapeHtml(p.name || p.username || p.id);
+          row.innerHTML =
+            '<div>To <strong>' + who + '</strong> · PENDING</div><div class="sub" style="margin-top:4px">' +
+            escapeHtml(r.id) +
+            '</div>';
+          host.appendChild(row);
+        });
+      }
+
       async function getNotifications() {
         const { json } = await api('/user/notifications/list?page=1&limit=20', 'GET', null, true);
         const notifications = (json && json.data && json.data.notifications) || [];
+        if (json && json.data) {
+          applyNavBadges({
+            unreadChatThreads: json.data.chatUnreadThreadCount,
+            socialUnreadCount: json.data.unreadCount,
+          });
+        }
         els.notificationsList.innerHTML = '';
         notifications.forEach((n) => {
           const row = document.createElement('div');
@@ -969,9 +1266,17 @@
           item.className = 'chat-item' + (activeChatId === chat.chatId ? ' active' : '');
           const lastMessageText = chat.lastMessagePreview || 'No messages yet';
           const lastAt = chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleString() : '';
+          const unreadN = Math.max(0, Number(chat.unreadIncomingCount) || 0);
+          const unreadHtml =
+            unreadN > 0
+              ? '<span class="chat-unread-pill" title="Unread messages">' +
+                (unreadN > 99 ? '99+' : String(unreadN)) +
+                '</span>'
+              : '';
           item.innerHTML =
             '<div class="title">' +
             escapeHtml(chat.interlocutorName || 'User') +
+            unreadHtml +
             '</div>' +
             '<div class="sub">' +
             escapeHtml(lastMessageText) +
@@ -984,10 +1289,17 @@
         });
       }
 
-      async function getChats() {
+      /**
+       * @param {{ syncBadges?: boolean }} [opts] — set `syncBadges: false` when socket will send `nav:badges:updated` (avoids duplicate HTTP).
+       */
+      async function getChats(opts) {
+        const syncBadges = !opts || opts.syncBadges !== false;
         const { json } = await api('/user/chats/list', 'GET', null, true);
         const chats = (json && json.data && json.data.chats) || [];
         renderChats(chats);
+        if (syncBadges) {
+          await refreshNavBadgesFromHttp();
+        }
       }
 
       function getActiveChatMeta() {
@@ -1052,8 +1364,12 @@
 
         socket.on('presence:updated', () => {});
 
+        socket.on(USER_SOCKET_NAV_BADGES, (payload) => {
+          applyNavBadges(payload);
+        });
+
         socket.on('chat:inbox:updated', () => {
-          getChats();
+          getChats({ syncBadges: false });
         });
 
         socket.on('chat:typing', (data) => {
@@ -1086,7 +1402,6 @@
             }
             setTyping('');
           }
-          getNotifications();
         });
 
         socket.on('chat:read', (data) => {
@@ -1197,6 +1512,8 @@
             els.accessToken.value = json.data.access_token || '';
             els.refreshToken.value = json.data.refresh_token || '';
             await getMe();
+            await loadIncomingFriendRequests();
+            await loadOutgoingFriendRequests();
             await getNotifications();
             await getChats();
             const connected = await ensureSocketConnected();
@@ -1293,6 +1610,35 @@
       bind('getNotificationsBtn', getNotifications);
       bind('getChatsBtn', getChats);
 
+      bind('loadDiscoverBtn', loadDiscoverUsers);
+      bind('refreshIncomingFrBtn', loadIncomingFriendRequests);
+      bind('refreshOutgoingFrBtn', loadOutgoingFriendRequests);
+      bind('sendFriendRequestBtn', async () => {
+        const receiverId = document.getElementById('friendRequestReceiverId').value.trim();
+        if (!receiverId) {
+          log('Friends', 'Enter a receiver user id.');
+          return;
+        }
+        await api('/user/friends/request', 'POST', { receiverId }, true);
+        await loadOutgoingFriendRequests();
+        await refreshNavBadgesFromHttp();
+      });
+
+      bind('openDmBtn', async () => {
+        const otherUserId = document.getElementById('openDmUserId').value.trim();
+        if (!otherUserId) {
+          log('Open DM', 'Enter the other user id.');
+          return;
+        }
+        const { json } = await api('/user/chats/open', 'POST', { otherUserId }, true);
+        if (json && json.data && json.data.chatId) {
+          log('Open DM', json.message + ' → ' + json.data.chatId);
+          await getChats();
+          const row = chatsCache.find((c) => c.chatId === json.data.chatId);
+          await selectChat(json.data.chatId, row || null);
+        }
+      });
+
       bind('suggestBtn', async () => {
         if (!activeChatId) return;
         const body = {
@@ -1319,6 +1665,36 @@
         els.chatContent.value = t;
         document.getElementById('sendMessageBtn').click();
       });
+
+      function openAccordionSection(accRootId) {
+        const acc = document.getElementById(accRootId);
+        if (!acc) return;
+        const trigger = acc.querySelector('.accordion-trigger');
+        acc.classList.add('open');
+        if (trigger) trigger.setAttribute('aria-expanded', 'true');
+      }
+
+      function wireNavFocusButtons() {
+        document.querySelectorAll('.nav-focus-chats').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const target = document.getElementById('sectionChats');
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          });
+        });
+        document.querySelectorAll('.nav-focus-notifications').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const acc = document.getElementById('accNotif');
+            if (acc) {
+              openAccordionSection('accNotif');
+              acc.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          });
+        });
+      }
+
+      wireNavFocusButtons();
 
       setAuthMode('login');
       setChatPanelVisible(false);

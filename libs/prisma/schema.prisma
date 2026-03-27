@@ -26,6 +26,8 @@ enum NotificationType {
   FRIEND_ACCEPTED
   LIKE
   COMMENT
+  /// In-app / push digest; list UI may hide these — chat tab uses unread messages instead.
+  CHAT_MESSAGE
 }
 
 enum FriendRequestStatus {

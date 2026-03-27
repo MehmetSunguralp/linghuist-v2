@@ -5,6 +5,8 @@ export class UserChatItemDto {
   interlocutorUsername!: string | null;
   lastMessagePreview!: string | null;
   lastMessageAt!: Date | null;
+  /** Unread messages from others in this chat (for list dots). */
+  unreadIncomingCount!: number;
 }
 
 export class UserChatsDataDto {

@@ -29,7 +29,10 @@ import { GetChatMessagesResponseEnvelopeDto } from './dto/get_chat_messages_resp
 import { CorrectMessageDto } from './dto/correct_message.dto';
 import { TranslateMessageDto } from './dto/translate_message.dto';
 import { ChatSuggestionDto } from './dto/chat_suggestion.dto';
+import { OpenDirectChatDto } from './dto/open_direct_chat.dto';
 import { EditMessageDto } from './dto/edit_message.dto';
+import { SendFriendRequestDto } from './dto/send_friend_request.dto';
+import { FriendRequestsListEnvelopeDto } from './dto/friend_requests_response.dto';
 import { UserGateway } from './user.gateway';
 
 type UploadedImageFile = {
@@ -115,17 +118,29 @@ export class UserController {
 
   @UseGuards(AuthGuard)
   @Put('notifications/:notificationId/read')
-  markNotificationAsRead(
+  async markNotificationAsRead(
     @CurrentUserId() userId: string,
     @Param('notificationId') notificationId: string,
   ): Promise<ApiEnvelope<null>> {
-    return this.userService.markNotificationAsRead(userId, notificationId);
+    const result = await this.userService.markNotificationAsRead(userId, notificationId);
+    this.userGateway.emitNavigationBadgesForUser(userId);
+    return result;
   }
 
   @UseGuards(AuthGuard)
   @Get('chats/list')
   getMyChats(@CurrentUserId() userId: string): Promise<GetUserChatsResponseEnvelopeDto> {
     return this.userService.getMyChats(userId);
+  }
+
+  /** Find or create a 1:1 chat with another user (accepted friends, not blocked). */
+  @UseGuards(AuthGuard)
+  @Post('chats/open')
+  openDirectChat(
+    @CurrentUserId() userId: string,
+    @Body() body: OpenDirectChatDto,
+  ): Promise<ApiEnvelope<{ chatId: string }>> {
+    return this.userService.ensureDirectChatWithUser(userId, body.otherUserId);
   }
 
   @UseGuards(AuthGuard)
@@ -151,12 +166,14 @@ export class UserController {
 
   @UseGuards(AuthGuard)
   @Put('chats/messages/:messageId/correct')
-  manuallyCorrectMessage(
+  async manuallyCorrectMessage(
     @CurrentUserId() userId: string,
     @Param('messageId') messageId: string,
     @Body() body: CorrectMessageDto,
-  ): Promise<ApiEnvelope<{ messageId: string; correctedText: string }>> {
-    return this.userService.manuallyCorrectMessage(userId, messageId, body.correctedText);
+  ) {
+    const envelope = await this.userService.manuallyCorrectMessage(userId, messageId, body.correctedText);
+    this.userGateway.notifyMessageEdited(envelope.data.chatId, envelope.data.message);
+    return envelope;
   }
 
   @UseGuards(AuthGuard)
@@ -177,6 +194,53 @@ export class UserController {
     @Body() body: ChatSuggestionDto,
   ): Promise<ApiEnvelope<{ suggestion: string; translatedSuggestion: string }>> {
     return this.userService.suggestNextMessage(userId, chatId, body.userLanguage, body.chatLanguage);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('friends/request')
+  async sendFriendRequest(
+    @CurrentUserId() userId: string,
+    @Body() body: SendFriendRequestDto,
+  ): Promise<ApiEnvelope<{ requestId: string }>> {
+    const result = await this.userService.sendFriendRequest(userId, body.receiverId);
+    this.userGateway.emitNavigationBadgesForUser(body.receiverId);
+    this.userGateway.emitNavigationBadgesForUser(userId);
+    return result;
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('friends/requests/incoming')
+  listIncomingFriendRequests(@CurrentUserId() userId: string): Promise<FriendRequestsListEnvelopeDto> {
+    return this.userService.listIncomingFriendRequests(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('friends/requests/outgoing')
+  listOutgoingFriendRequests(@CurrentUserId() userId: string): Promise<FriendRequestsListEnvelopeDto> {
+    return this.userService.listOutgoingFriendRequests(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('friends/requests/:requestId/accept')
+  async acceptFriendRequest(
+    @CurrentUserId() userId: string,
+    @Param('requestId') requestId: string,
+  ): Promise<ApiEnvelope<{ requestId: string; otherUserId: string }>> {
+    const result = await this.userService.acceptFriendRequest(userId, requestId);
+    this.userGateway.emitNavigationBadgesForUser(userId);
+    this.userGateway.emitNavigationBadgesForUser(result.data.otherUserId);
+    return result;
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('friends/requests/:requestId/reject')
+  async rejectFriendRequest(
+    @CurrentUserId() userId: string,
+    @Param('requestId') requestId: string,
+  ): Promise<ApiEnvelope<{ requestId: string }>> {
+    const result = await this.userService.rejectFriendRequest(userId, requestId);
+    this.userGateway.emitNavigationBadgesForUser(userId);
+    return result;
   }
 
   @UseGuards(AuthGuard)

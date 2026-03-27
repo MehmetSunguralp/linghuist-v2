@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { ForbiddenException, Logger, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '@linghuist-v2/supabase';
 import {
   ConnectedSocket,
@@ -48,6 +48,8 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = data.user.id;
     client.data.userId = userId;
     await client.join(this.getUserRoom(userId));
+
+    this.emitNavigationBadgesForUser(userId);
 
     await this.userService.setOnlineStatus(userId, true);
     this.server.emit(USER_SOCKET_EVENTS.PRESENCE_UPDATED, {
@@ -159,6 +161,7 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const inboxPayload = { chatId };
     for (const participantId of participantIds) {
       this.server.to(this.getUserRoom(participantId)).emit(USER_SOCKET_EVENTS.CHAT_INBOX_UPDATED, inboxPayload);
+      this.emitNavigationBadgesForUser(participantId);
     }
 
     this.server.emit(USER_SOCKET_EVENTS.PRESENCE_UPDATED, {
@@ -187,13 +190,28 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const readParticipantIds = await this.userService.getChatParticipantUserIds(chatId);
     for (const participantId of readParticipantIds) {
       this.server.to(this.getUserRoom(participantId)).emit(USER_SOCKET_EVENTS.CHAT_READ, readPayload);
+      this.emitNavigationBadgesForUser(participantId);
     }
   }
 
+  /** Push current badge counts to a user’s personal room (HTTP handlers may call after mutation). */
+  emitNavigationBadgesForUser(userId: string): void {
+    void this.userService.getNavigationBadges(userId).then((badges) => {
+      this.server.to(this.getUserRoom(userId)).emit(USER_SOCKET_EVENTS.NAV_BADGES_UPDATED, badges);
+    });
+  }
+
   private async assertParticipant(userId: string, chatId: string): Promise<void> {
-    const isParticipant = await this.userService.isChatParticipant(userId, chatId);
-    if (!isParticipant) {
-      throw new WsException('You are not a participant in this chat');
+    try {
+      await this.userService.assertChatRoomAccess(userId, chatId);
+    } catch (err: unknown) {
+      if (err instanceof ForbiddenException) {
+        throw new WsException(err.message);
+      }
+      if (err instanceof NotFoundException) {
+        throw new WsException('You are not a participant in this chat');
+      }
+      throw err;
     }
   }
 

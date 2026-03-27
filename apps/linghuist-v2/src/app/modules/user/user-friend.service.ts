@@ -1,0 +1,189 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { FriendRequestStatus } from '@prisma/client';
+import { PrismaService } from '@linghuist-v2/prisma';
+import type { ApiEnvelope } from '../../common/api-envelope.types';
+import { FriendRequestsListEnvelopeDto } from './dto/friend_requests_response.dto';
+import { UserNotificationService } from './user-notification.service';
+
+const peerSelect = {
+  id: true,
+  username: true,
+  name: true,
+} as const;
+
+@Injectable()
+export class UserFriendService {
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly userNotificationService: UserNotificationService,
+  ) {}
+
+  async sendFriendRequest(senderId: string, receiverId: string): Promise<ApiEnvelope<{ requestId: string }>> {
+    if (receiverId === senderId) {
+      throw new BadRequestException('Cannot send a friend request to yourself');
+    }
+    const [receiver, existingAccepted] = await Promise.all([
+      this.prismaService.user.findUnique({
+        where: { id: receiverId },
+        select: { id: true },
+      }),
+      this.prismaService.friendRequest.findFirst({
+        where: {
+          status: FriendRequestStatus.ACCEPTED,
+          OR: [
+            { senderId, receiverId },
+            { senderId: receiverId, receiverId: senderId },
+          ],
+        },
+        select: { id: true },
+      }),
+    ]);
+    if (!receiver) {
+      throw new NotFoundException('User not found');
+    }
+    if (existingAccepted) {
+      throw new ConflictException('You are already friends with this user');
+    }
+    if (await this.isBlockedPair(senderId, receiverId)) {
+      throw new ForbiddenException('Cannot send a friend request to this user');
+    }
+
+    const pendingBetween = await this.prismaService.friendRequest.findFirst({
+      where: {
+        status: FriendRequestStatus.PENDING,
+        OR: [
+          { senderId, receiverId },
+          { senderId: receiverId, receiverId: senderId },
+        ],
+      },
+      select: { id: true },
+    });
+    if (pendingBetween) {
+      throw new ConflictException('A friend request is already pending between you and this user');
+    }
+
+    const created = await this.prismaService.friendRequest.create({
+      data: { senderId, receiverId, status: FriendRequestStatus.PENDING },
+      select: { id: true },
+    });
+
+    await this.userNotificationService.notifyFriendRequestReceived(receiverId, senderId, created.id);
+
+    return {
+      message: 'Friend request sent',
+      data: { requestId: created.id },
+    };
+  }
+
+  async listIncomingFriendRequests(userId: string): Promise<FriendRequestsListEnvelopeDto> {
+    const rows = await this.prismaService.friendRequest.findMany({
+      where: { receiverId: userId, status: FriendRequestStatus.PENDING },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        sender: { select: peerSelect },
+      },
+    });
+    return {
+      message: 'Incoming friend requests',
+      data: {
+        requests: rows.map((row) => ({
+          id: row.id,
+          status: row.status,
+          createdAt: row.createdAt,
+          peer: row.sender,
+        })),
+      },
+    };
+  }
+
+  async listOutgoingFriendRequests(userId: string): Promise<FriendRequestsListEnvelopeDto> {
+    const rows = await this.prismaService.friendRequest.findMany({
+      where: { senderId: userId, status: FriendRequestStatus.PENDING },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        receiver: { select: peerSelect },
+      },
+    });
+    return {
+      message: 'Outgoing friend requests',
+      data: {
+        requests: rows.map((row) => ({
+          id: row.id,
+          status: row.status,
+          createdAt: row.createdAt,
+          peer: row.receiver,
+        })),
+      },
+    };
+  }
+
+  async acceptFriendRequest(
+    userId: string,
+    requestId: string,
+  ): Promise<ApiEnvelope<{ requestId: string; otherUserId: string }>> {
+    const request = await this.prismaService.friendRequest.findFirst({
+      where: { id: requestId, receiverId: userId, status: FriendRequestStatus.PENDING },
+      select: { id: true, senderId: true },
+    });
+    if (!request) {
+      throw new NotFoundException('Friend request not found');
+    }
+
+    await this.prismaService.friendRequest.update({
+      where: { id: requestId },
+      data: { status: FriendRequestStatus.ACCEPTED },
+    });
+
+    await this.userNotificationService.notifyFriendRequestAccepted(userId, request.senderId, requestId);
+
+    return {
+      message: 'Friend request accepted',
+      data: { requestId, otherUserId: request.senderId },
+    };
+  }
+
+  async rejectFriendRequest(userId: string, requestId: string): Promise<ApiEnvelope<{ requestId: string }>> {
+    const request = await this.prismaService.friendRequest.findFirst({
+      where: { id: requestId, receiverId: userId, status: FriendRequestStatus.PENDING },
+      select: { id: true },
+    });
+    if (!request) {
+      throw new NotFoundException('Friend request not found');
+    }
+
+    await this.prismaService.friendRequest.update({
+      where: { id: requestId },
+      data: { status: FriendRequestStatus.REJECTED },
+    });
+
+    return {
+      message: 'Friend request rejected',
+      data: { requestId },
+    };
+  }
+
+  private async isBlockedPair(a: string, b: string): Promise<boolean> {
+    const block = await this.prismaService.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: a, blockedId: b },
+          { blockerId: b, blockedId: a },
+        ],
+      },
+      select: { id: true },
+    });
+    return Boolean(block);
+  }
+}
