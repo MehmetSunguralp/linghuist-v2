@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -33,6 +34,10 @@ import { OpenDirectChatDto } from './dto/open_direct_chat.dto';
 import { EditMessageDto } from './dto/edit_message.dto';
 import { SendFriendRequestDto } from './dto/send_friend_request.dto';
 import { FriendRequestsListEnvelopeDto } from './dto/friend_requests_response.dto';
+import { CreatePostDto } from './dto/create_post.dto';
+import { UpdatePostDto } from './dto/update_post.dto';
+import { CreateCommentDto } from './dto/create_comment.dto';
+import { FeedQueryDto } from './dto/feed_query.dto';
 import { UserGateway } from './user.gateway';
 
 type UploadedImageFile = {
@@ -241,6 +246,86 @@ export class UserController {
     const result = await this.userService.rejectFriendRequest(userId, requestId);
     this.userGateway.emitNavigationBadgesForUser(userId);
     return result;
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('posts/feed')
+  getFeed(@CurrentUserId() userId: string, @Query() query: FeedQueryDto) {
+    return this.userService.getFeed(userId, query.page ?? 1, query.limit);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('posts')
+  createPost(@CurrentUserId() userId: string, @Body() body: CreatePostDto) {
+    return this.userService.createPost(userId, body);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('posts/:postId')
+  getPostById(@CurrentUserId() userId: string, @Param('postId') postId: string) {
+    return this.userService.getPostById(userId, postId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('posts/:postId')
+  updatePost(
+    @CurrentUserId() userId: string,
+    @Param('postId') postId: string,
+    @Body() body: UpdatePostDto,
+  ) {
+    return this.userService.updatePost(userId, postId, body);
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete('posts/:postId')
+  deletePost(@CurrentUserId() userId: string, @Param('postId') postId: string) {
+    return this.userService.deletePost(userId, postId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('posts/:postId/like')
+  async likePost(@CurrentUserId() userId: string, @Param('postId') postId: string) {
+    const envelope = await this.userService.likePost(userId, postId);
+    if (envelope.data.postAuthorId !== userId) {
+      this.userGateway.emitNavigationBadgesForUser(envelope.data.postAuthorId);
+    }
+    return envelope;
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete('posts/:postId/like')
+  unlikePost(@CurrentUserId() userId: string, @Param('postId') postId: string) {
+    return this.userService.unlikePost(userId, postId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('posts/:postId/comments')
+  listPostComments(
+    @CurrentUserId() userId: string,
+    @Param('postId') postId: string,
+    @Query() query: FeedQueryDto,
+  ) {
+    return this.userService.listPostComments(userId, postId, query.page ?? 1, query.limit);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('posts/:postId/comments')
+  async createPostComment(
+    @CurrentUserId() userId: string,
+    @Param('postId') postId: string,
+    @Body() body: CreateCommentDto,
+  ) {
+    const envelope = await this.userService.createPostComment(userId, postId, body);
+    if (envelope.data.postAuthorId !== userId) {
+      this.userGateway.emitNavigationBadgesForUser(envelope.data.postAuthorId);
+    }
+    return envelope;
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete('comments/:commentId')
+  deletePostComment(@CurrentUserId() userId: string, @Param('commentId') commentId: string) {
+    return this.userService.deletePostComment(userId, commentId);
   }
 
   @UseGuards(AuthGuard)

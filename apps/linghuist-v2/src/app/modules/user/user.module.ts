@@ -6,6 +6,7 @@ import { UserChatService } from './user-chat.service';
 import { UserFriendService } from './user-friend.service';
 import { UserNotificationService } from './user-notification.service';
 import { UserProfileService } from './user-profile.service';
+import { UserSocialService } from './user-social.service';
 import { UserService } from './user.service';
 
 /** User profile & discovery; imports `AuthModule` for `AuthGuard`. */
@@ -16,6 +17,7 @@ import { UserService } from './user.service';
     UserService,
     UserProfileService,
     UserFriendService,
+    UserSocialService,
     UserChatService,
     UserNotificationService,
     UserGateway,

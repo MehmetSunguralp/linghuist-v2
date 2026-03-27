@@ -72,6 +72,42 @@ export class UserNotificationService {
     });
   }
 
+  async notifyPostLiked(postAuthorId: string, likerId: string, postId: string): Promise<void> {
+    if (postAuthorId === likerId) {
+      return;
+    }
+    await this.prismaService.notification.create({
+      data: {
+        userId: postAuthorId,
+        senderId: likerId,
+        type: NotificationType.LIKE,
+        entityId: postId,
+        read: false,
+      },
+    });
+  }
+
+  async notifyPostCommented(
+    postAuthorId: string,
+    commenterId: string,
+    postId: string,
+    commentId: string,
+  ): Promise<void> {
+    if (postAuthorId === commenterId) {
+      return;
+    }
+    await this.prismaService.notification.create({
+      data: {
+        userId: postAuthorId,
+        senderId: commenterId,
+        type: NotificationType.COMMENT,
+        entityId: commentId,
+        read: false,
+        metadata: { postId } as Prisma.InputJsonValue,
+      },
+    });
+  }
+
   /** Clears CHAT_MESSAGE unread rows when the user reads the thread (optional consistency with DB). */
   async markChatMessageNotificationsReadForChat(userId: string, chatId: string): Promise<void> {
     await this.prismaService.notification.updateMany({

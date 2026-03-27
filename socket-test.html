@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Linghuist - Chat tester</title>
+    <title>Linghuist — social & chat</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -30,13 +30,180 @@
       }
       .layout {
         display: grid;
-        grid-template-columns: minmax(300px, 360px) 1fr;
+        grid-template-columns: minmax(280px, 340px) 1fr;
         gap: 12px;
         height: 100vh;
         max-height: 100vh;
         min-height: 0;
         padding: 12px;
         align-items: stretch;
+      }
+      .app-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .app-tab {
+        width: 100%;
+        text-align: left;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #0b1220;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.8125rem;
+        font-weight: 600;
+      }
+      .app-tab:hover {
+        border-color: #475569;
+        color: var(--text);
+      }
+      .app-tab.active {
+        background: rgba(59, 130, 246, 0.15);
+        border-color: var(--blue);
+        color: var(--text);
+      }
+      .app-tab.ghost-tab {
+        background: transparent;
+        font-size: 1rem;
+      }
+      .tab-mini-badge {
+        display: inline-block;
+        min-width: 18px;
+        padding: 0 5px;
+        margin-left: 6px;
+        border-radius: 999px;
+        background: #dc2626;
+        color: #fff;
+        font-size: 0.65rem;
+        vertical-align: middle;
+      }
+      .tab-mini-badge[hidden] {
+        display: none !important;
+      }
+      .main-view {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        flex: 1;
+        overflow: hidden;
+      }
+      .main-view.hidden {
+        display: none !important;
+      }
+      .main-column {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-width: 0;
+        max-height: 100%;
+      }
+      .section.hidden,
+      #sidebarDevPanel.hidden {
+        display: none !important;
+      }
+      .feed-toolbar {
+        flex-shrink: 0;
+        padding: 14px 16px;
+        border-bottom: 1px solid #1e293b;
+        background: var(--panel-soft);
+      }
+      .feed-composer-box textarea {
+        min-height: 56px;
+        margin-top: 6px;
+      }
+      .feed-composer-box input {
+        margin-top: 8px;
+      }
+      .feed-composer-box button#submitPostBtn {
+        margin-top: 10px;
+        max-width: 160px;
+      }
+      .feed-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .feed-card {
+        border: 1px solid #263043;
+        border-radius: 12px;
+        padding: 14px;
+        background: #0b1220;
+      }
+      .feed-card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .feed-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--panel-soft);
+        object-fit: cover;
+      }
+      .feed-author-name {
+        font-weight: 700;
+        font-size: 0.9rem;
+      }
+      .feed-meta {
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .feed-body {
+        font-size: 0.9rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .feed-image {
+        margin-top: 10px;
+        max-width: 100%;
+        max-height: 320px;
+        border-radius: 10px;
+        object-fit: contain;
+        background: #020617;
+      }
+      .feed-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+        align-items: center;
+      }
+      .feed-actions button {
+        width: auto;
+      }
+      .feed-comments {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #1e293b;
+        display: none;
+      }
+      .feed-comments.open {
+        display: block;
+      }
+      .feed-comment {
+        font-size: 0.8125rem;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      }
+      .feed-comment:last-child {
+        border-bottom: none;
+      }
+      .comment-form {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .comment-form input {
+        margin: 0;
       }
       .side,
       .chat {
@@ -565,34 +732,26 @@
       <aside class="side">
         <div class="section" style="flex-shrink: 0">
           <h1>Linghuist</h1>
-          <p class="subtitle">Chat and AI feature testing</p>
+          <p class="subtitle">Feed, friends, chat — full stack demo</p>
           <div id="socketStatus" class="status-pill offline" role="status">
             <span class="status-dot"></span>
             <span>Disconnected</span>
           </div>
-          <div class="nav-tray" aria-label="App navigation badges">
-            <span class="nav-tray-label">Navigator (like mobile app)</span>
-            <button
-              type="button"
-              class="nav-icon-btn nav-focus-chats"
-              title="Chats — jump to list; badge = threads with unread messages"
-            >
-              <span aria-hidden="true">💬</span>
-              <span id="navBadgeChat" class="nav-badge" hidden>0</span>
+          <div class="app-tabs" role="tablist" aria-label="Main sections">
+            <button type="button" class="app-tab active" data-app-tab="feed">🏠 Feed</button>
+            <button type="button" class="app-tab" data-app-tab="messages">
+              💬 Messages <span id="tabBadgeChat" class="tab-mini-badge" hidden>0</span>
             </button>
-            <button
-              type="button"
-              class="nav-icon-btn nav-focus-notifications"
-              title="Notifications — jump to panel; badge = social only (not chat)"
-            >
-              <span aria-hidden="true">🔔</span>
-              <span id="navBadgeNotif" class="nav-badge" hidden>0</span>
+            <button type="button" class="app-tab" data-app-tab="friends">👥 Friends</button>
+            <button type="button" class="app-tab" data-app-tab="notifications">
+              🔔 Alerts <span id="tabBadgeNotif" class="tab-mini-badge" hidden>0</span>
             </button>
+            <button type="button" class="app-tab ghost-tab" data-app-tab="dev" title="Developer tools">⚙️ More</button>
           </div>
         </div>
 
         <div class="side-scroll">
-          <div class="section">
+          <div id="authSection" class="section">
             <div class="auth-tabs" role="tablist">
               <button type="button" id="tabLogin" class="active" data-mode="login">Login</button>
               <button type="button" id="tabSignup" data-mode="signup">Signup</button>
@@ -608,54 +767,33 @@
             <button type="button" id="primaryAuthBtn" style="margin-top: 12px">Login</button>
           </div>
 
-          <div class="accordion" id="accFriends">
-            <button type="button" class="accordion-trigger" aria-expanded="false">
-              <span>Friends (requests before chat)</span>
-              <span class="accordion-chevron">▸</span>
+          <div id="sidebarFeedPanel" class="section">
+            <p class="subtitle" style="margin: 0">Timeline shows all posts except blocked authors.</p>
+            <button type="button" id="sidebarRefreshFeedBtn" class="secondary" style="margin-top: 10px">
+              Refresh feed
             </button>
-            <div class="accordion-panel">
-              <p class="subtitle" style="margin: 0 0 8px">
-                Flow: <strong>send request</strong> → other account <strong>accepts</strong> → then
-                <strong>Open or create DM</strong> below. Discovery only lists users with a non-empty username.
-              </p>
-              <label>Discovery</label>
-              <button type="button" id="loadDiscoverBtn" class="secondary" style="margin-top: 8px">
-                Load people (GET /user/all/1)
-              </button>
-              <div id="discoverUsersList" class="notifications" style="margin-top: 10px; max-height: 220px"></div>
-              <label for="friendRequestReceiverId" style="margin-top: 12px">Send request by user id</label>
-              <input id="friendRequestReceiverId" placeholder="UUID of the person you want to add" />
-              <button type="button" id="sendFriendRequestBtn" class="secondary" style="margin-top: 8px">
-                Send friend request
-              </button>
-              <label style="margin-top: 14px">Incoming (accept / reject)</label>
-              <button type="button" id="refreshIncomingFrBtn" class="secondary small" style="margin-top: 6px">
-                Refresh incoming
-              </button>
-              <div id="incomingFriendRequestsList" class="notifications" style="margin-top: 10px"></div>
-              <label style="margin-top: 14px">Outgoing (pending)</label>
-              <button type="button" id="refreshOutgoingFrBtn" class="secondary small" style="margin-top: 6px">
-                Refresh outgoing
-              </button>
-              <div id="outgoingFriendRequestsList" class="notifications" style="margin-top: 10px"></div>
-            </div>
           </div>
 
-          <div class="section" id="sectionChats">
-            <label style="margin-top: 0">Available chats</label>
-            <p class="subtitle" style="margin: 6px 0 0">
-              Chats only appear for <strong>accepted friends</strong>. Use the <strong>Friends</strong> panel first,
-              then open a DM here (same rules as the API).
+          <div id="sidebarMessagesPanel" class="section hidden">
+            <label style="margin-top: 0">Conversations</label>
+            <p class="subtitle" style="margin: 6px 0 0">Friends only. Open a DM from Friends or below.</p>
+            <label for="openDmUserId">Friend user id</label>
+            <input id="openDmUserId" placeholder="UUID" />
+            <button type="button" id="openDmBtn" class="secondary" style="margin-top: 8px">Open / create DM</button>
+            <button type="button" id="getChatsBtn" class="secondary" style="margin-top: 8px">Refresh chats</button>
+            <div id="chatsList" class="chats-list" style="margin-top: 10px; max-height: 240px"></div>
+          </div>
+
+          <div id="sidebarFriendsPanel" class="section hidden">
+            <p class="subtitle" style="margin: 0">
+              Discovery and requests are in the main panel. Use refresh to sync lists.
             </p>
-            <label for="openDmUserId">Other user id (friend’s UUID)</label>
-            <input id="openDmUserId" placeholder="Paste id from /user/all/1 or profile" />
-            <button type="button" id="openDmBtn" class="secondary" style="margin-top: 8px">
-              Open or create DM
+            <button type="button" id="friendsRefreshAllBtn" class="secondary" style="margin-top: 10px">
+              Refresh friend lists
             </button>
-            <button type="button" id="getChatsBtn" class="secondary" style="margin-top: 8px">Refresh list</button>
-            <div id="chatsList" class="chats-list" style="margin-top: 10px"></div>
           </div>
 
+          <div id="sidebarDevPanel" class="hidden">
           <div class="accordion" id="accServer">
             <button type="button" class="accordion-trigger" aria-expanded="false">
               <span>Server and connection</span>
@@ -701,17 +839,6 @@
             </div>
           </div>
 
-          <div class="accordion" id="accNotif">
-            <button type="button" class="accordion-trigger" aria-expanded="false">
-              <span>Notifications</span>
-              <span class="accordion-chevron">▸</span>
-            </button>
-            <div class="accordion-panel">
-              <button type="button" id="getNotificationsBtn" class="secondary">Refresh</button>
-              <div id="notificationsList" class="notifications" style="margin-top: 10px"></div>
-            </div>
-          </div>
-
           <div class="accordion" id="accProfile">
             <button type="button" class="accordion-trigger" aria-expanded="false">
               <span>Profil</span>
@@ -742,66 +869,148 @@
               <div id="logs" class="logs"></div>
             </div>
           </div>
+          </div>
         </div>
       </aside>
 
-      <main class="chat">
-        <div class="chat-header">
-          <div>
-            <strong id="chatTitle">Chat</strong>
-            <p class="subtitle" id="chatSubtitle">Select a chat from the list</p>
+      <div class="main-column">
+        <div id="viewFeed" class="main-view chat">
+          <div class="feed-toolbar">
+            <strong>Feed</strong>
+            <p class="subtitle" style="margin: 4px 0 0">Posts from everyone you are not blocking.</p>
           </div>
-          <div class="nav-tray" aria-label="Navigator badges (same as sidebar)">
-            <button
-              type="button"
-              class="nav-icon-btn nav-focus-chats"
-              title="Chats — scroll to list; red = unread threads"
-            >
-              <span aria-hidden="true">💬</span>
-              <span id="navBadgeChatMain" class="nav-badge" hidden>0</span>
-            </button>
-            <button
-              type="button"
-              class="nav-icon-btn nav-focus-notifications"
-              title="Notifications — social only"
-            >
-              <span aria-hidden="true">🔔</span>
-              <span id="navBadgeNotifMain" class="nav-badge" hidden>0</span>
+          <div class="feed-composer-box" style="padding: 14px 16px; border-bottom: 1px solid #1e293b; flex-shrink: 0">
+            <label for="postContentInput">New post</label>
+            <textarea id="postContentInput" placeholder="What's happening?"></textarea>
+            <label for="postImageUrlInput">Image URL (optional)</label>
+            <input id="postImageUrlInput" type="url" placeholder="https://..." />
+            <button type="button" id="submitPostBtn">Publish</button>
+          </div>
+          <div id="feedList" class="feed-list"></div>
+          <div class="feed-toolbar" style="border-top: 1px solid #1e293b; display: flex; justify-content: center">
+            <button type="button" id="loadMoreFeedBtn" class="secondary" style="max-width: 200px; display: none">
+              Load more
             </button>
           </div>
         </div>
-        <div class="chat-feed-wrap">
-          <div id="chatEmpty" class="empty-chat">Messages will appear here after you open a chat.</div>
-          <div id="chatFeed" class="chat-feed" hidden></div>
-          <div id="typingIndicator" class="typing"></div>
-        </div>
-        <div class="composer">
-          <div class="composer-row">
-            <button type="button" id="suggestBtn" class="icon-btn secondary" title="Generate suggestion">💡</button>
-            <input id="chatContent" placeholder="Type a message..." disabled />
-            <button type="button" id="sendMessageBtn" disabled>Send</button>
-          </div>
-          <div id="suggestionBanner" class="suggestion-banner">
-            <div class="label">Suggested message</div>
-            <div id="suggestionForeign"></div>
-            <div class="pair">
-              <div class="label">Translated version</div>
-              <div id="suggestionNative"></div>
+
+        <main id="viewMessages" class="main-view chat hidden">
+          <div class="chat-header">
+            <div>
+              <strong id="chatTitle">Chat</strong>
+              <p class="subtitle" id="chatSubtitle">Select a chat from the list</p>
             </div>
-            <div class="suggestion-actions">
-              <button type="button" id="useSuggestionBtn" class="secondary small">Use in input</button>
-              <button type="button" id="sendSuggestionBtn" class="small">Send suggestion</button>
+            <div class="nav-tray" aria-label="Quick nav">
+              <button
+                type="button"
+                class="nav-icon-btn nav-focus-chats"
+                title="Messages (this tab)"
+              >
+                <span aria-hidden="true">💬</span>
+                <span id="navBadgeChatMain" class="nav-badge" hidden>0</span>
+              </button>
+              <button
+                type="button"
+                class="nav-icon-btn nav-focus-notifications"
+                title="Open notifications"
+              >
+                <span aria-hidden="true">🔔</span>
+                <span id="navBadgeNotifMain" class="nav-badge" hidden>0</span>
+              </button>
+            </div>
+          </div>
+          <div class="chat-feed-wrap">
+            <div id="chatEmpty" class="empty-chat">Messages will appear here after you open a chat.</div>
+            <div id="chatFeed" class="chat-feed" hidden></div>
+            <div id="typingIndicator" class="typing"></div>
+          </div>
+          <div class="composer">
+            <div class="composer-row">
+              <button type="button" id="suggestBtn" class="icon-btn secondary" title="Generate suggestion">💡</button>
+              <input id="chatContent" placeholder="Type a message..." disabled />
+              <button type="button" id="sendMessageBtn" disabled>Send</button>
+            </div>
+            <div id="suggestionBanner" class="suggestion-banner">
+              <div class="label">Suggested message</div>
+              <div id="suggestionForeign"></div>
+              <div class="pair">
+                <div class="label">Translated version</div>
+                <div id="suggestionNative"></div>
+              </div>
+              <div class="suggestion-actions">
+                <button type="button" id="useSuggestionBtn" class="secondary small">Use in input</button>
+                <button type="button" id="sendSuggestionBtn" class="small">Send suggestion</button>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <div id="viewFriends" class="main-view chat hidden">
+          <div class="feed-toolbar">
+            <strong>Friends</strong>
+            <p class="subtitle" style="margin: 4px 0 0">Send requests, accept, then open a DM from Messages.</p>
+          </div>
+          <div class="feed-list">
+            <div class="feed-card" style="margin-bottom: 0">
+              <p class="subtitle" style="margin: 0 0 10px">
+                Discovery lists users with a username. Flow: send request → other account accepts → Messages tab → Open DM.
+              </p>
+              <label>Discovery</label>
+              <button type="button" id="loadDiscoverBtn" class="secondary" style="margin-top: 8px">Load people</button>
+              <div id="discoverUsersList" class="notifications" style="margin-top: 10px; max-height: 220px"></div>
+              <label for="friendRequestReceiverId" style="margin-top: 14px">Send request by user id</label>
+              <input id="friendRequestReceiverId" placeholder="UUID" />
+              <button type="button" id="sendFriendRequestBtn" class="secondary" style="margin-top: 8px">
+                Send friend request
+              </button>
+              <label style="margin-top: 14px">Incoming</label>
+              <button type="button" id="refreshIncomingFrBtn" class="secondary small" style="margin-top: 6px; width: auto">
+                Refresh incoming
+              </button>
+              <div id="incomingFriendRequestsList" class="notifications" style="margin-top: 10px"></div>
+              <label style="margin-top: 14px">Outgoing</label>
+              <button type="button" id="refreshOutgoingFrBtn" class="secondary small" style="margin-top: 6px; width: auto">
+                Refresh outgoing
+              </button>
+              <div id="outgoingFriendRequestsList" class="notifications" style="margin-top: 10px"></div>
             </div>
           </div>
         </div>
-      </main>
+
+        <div id="viewNotifications" class="main-view chat hidden">
+          <div class="feed-toolbar" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+            <div>
+              <strong>Notifications</strong>
+              <p class="subtitle" style="margin: 4px 0 0">Likes, comments, and other social activity.</p>
+            </div>
+            <button type="button" id="getNotificationsBtn" class="secondary small" style="width: auto; margin-top: 4px">
+              Refresh
+            </button>
+          </div>
+          <div class="feed-list">
+            <div id="notificationsList" class="notifications" style="max-height: none; flex: 1"></div>
+          </div>
+        </div>
+
+        <div id="viewDev" class="main-view chat hidden">
+          <div class="feed-toolbar">
+            <strong>Developer</strong>
+            <p class="subtitle" style="margin: 4px 0 0">Connection, tokens, and logs are in the left sidebar panels.</p>
+          </div>
+          <div class="feed-list empty-chat" style="color: var(--muted); text-align: center; padding-top: 40px">
+            Expand accordions under “More” in the sidebar.
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
       const USER_SOCKET_NAV_BADGES = 'nav:badges:updated';
+      const FEED_PAGE_SIZE = 12;
       let socket = null;
       let me = null;
+      let feedPage = 1;
       let activeChatId = '';
       let chatsCache = [];
       let typingSent = false;
@@ -833,6 +1042,7 @@
         chatTitle: document.getElementById('chatTitle'),
         chatSubtitle: document.getElementById('chatSubtitle'),
         sendMessageBtn: document.getElementById('sendMessageBtn'),
+        feedList: document.getElementById('feedList'),
         suggestedBanner: document.getElementById('suggestionBanner'),
         suggestionForeign: document.getElementById('suggestionForeign'),
         suggestionNative: document.getElementById('suggestionNative'),
@@ -1104,6 +1314,236 @@
         setNavBadgeDom('navBadgeNotif', socN);
         setNavBadgeDom('navBadgeChatMain', chatN);
         setNavBadgeDom('navBadgeNotifMain', socN);
+        setNavBadgeDom('tabBadgeChat', chatN);
+        setNavBadgeDom('tabBadgeNotif', socN);
+      }
+
+      function setAppTab(name) {
+        const mainMap = {
+          feed: 'viewFeed',
+          messages: 'viewMessages',
+          friends: 'viewFriends',
+          notifications: 'viewNotifications',
+          dev: 'viewDev',
+        };
+        const showId = mainMap[name];
+        if (!showId) return;
+        Object.values(mainMap).forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.classList.toggle('hidden', id !== showId);
+        });
+        document.querySelectorAll('[data-app-tab]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-app-tab') === name);
+        });
+        const feedP = document.getElementById('sidebarFeedPanel');
+        const msgP = document.getElementById('sidebarMessagesPanel');
+        const frP = document.getElementById('sidebarFriendsPanel');
+        const devP = document.getElementById('sidebarDevPanel');
+        if (feedP) feedP.classList.toggle('hidden', name !== 'feed');
+        if (msgP) msgP.classList.toggle('hidden', name !== 'messages');
+        if (frP) frP.classList.toggle('hidden', name !== 'friends');
+        if (devP) devP.classList.toggle('hidden', name !== 'dev');
+      }
+
+      function postAuthorLabel(author) {
+        if (!author) return 'Unknown';
+        return author.name || author.username || author.id || 'Unknown';
+      }
+
+      function renderCommentRow(c) {
+        const row = document.createElement('div');
+        row.className = 'feed-comment';
+        const au = c.author || {};
+        const who = escapeHtml(postAuthorLabel(au));
+        const mine = me && au.id === me.id;
+        row.innerHTML =
+          '<div><strong>' +
+          who +
+          '</strong> · ' +
+          new Date(c.createdAt).toLocaleString() +
+          '</div><div style="margin-top:4px">' +
+          escapeHtml(c.content || '') +
+          '</div>';
+        if (mine) {
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'small secondary';
+          del.style.marginTop = '6px';
+          del.style.width = 'auto';
+          del.textContent = 'Delete';
+          del.addEventListener('click', async () => {
+            await api('/user/comments/' + c.id, 'DELETE', null, true);
+            row.remove();
+          });
+          row.appendChild(del);
+        }
+        return row;
+      }
+
+      async function loadCommentsIntoList(postId, host) {
+        host.innerHTML = '<p class="subtitle">Loading…</p>';
+        const { json } = await api(
+          '/user/posts/' + postId + '/comments?page=1&limit=40',
+          'GET',
+          null,
+          true,
+        );
+        host.innerHTML = '';
+        const comments = (json && json.data && json.data.comments) || [];
+        if (comments.length === 0) {
+          host.innerHTML = '<p class="subtitle">No comments yet.</p>';
+          return;
+        }
+        comments.forEach((cm) => host.appendChild(renderCommentRow(cm)));
+      }
+
+      function renderFeedCard(p) {
+        const card = document.createElement('div');
+        card.className = 'feed-card';
+        const au = p.author || {};
+        const authorName = escapeHtml(postAuthorLabel(au));
+        const isMine = me && au.id === me.id;
+        const thumb = au.thumbnailUrl
+          ? '<img class="feed-avatar" src="' +
+            escapeHtml(au.thumbnailUrl) +
+            '" alt="" crossorigin="anonymous" />'
+          : '<div class="feed-avatar" aria-hidden="true">👤</div>';
+        const imgBlock = p.imageUrl
+          ? '<img class="feed-image" src="' +
+            escapeHtml(p.imageUrl) +
+            '" alt="" crossorigin="anonymous" />'
+          : '';
+        const likeLabel = p.likedByMe ? '♥ Liked' : '♡ Like';
+        const deleteBtn = isMine
+          ? '<button type="button" class="small secondary" data-del-post>Delete post</button>'
+          : '';
+
+        card.innerHTML =
+          '<div class="feed-card-header">' +
+          thumb +
+          '<div><div class="feed-author-name">' +
+          authorName +
+          '</div>' +
+          '<div class="feed-meta">' +
+          new Date(p.createdAt).toLocaleString() +
+          '</div></div></div>' +
+          '<div class="feed-body">' +
+          escapeHtml(p.content || '') +
+          '</div>' +
+          imgBlock +
+          '<div class="feed-actions">' +
+          '<button type="button" class="small secondary" data-like-btn data-liked="' +
+          (p.likedByMe ? '1' : '0') +
+          '">' +
+          likeLabel +
+          '</button>' +
+          '<span data-like-count style="font-size:0.8rem;color:var(--muted)">' +
+          (p.likeCount != null ? p.likeCount : 0) +
+          '</span>' +
+          '<button type="button" class="small secondary" data-toggle-comments>Comments (' +
+          (p.commentCount != null ? p.commentCount : 0) +
+          ')</button>' +
+          deleteBtn +
+          '</div>' +
+          '<div class="feed-comments" data-comments-panel>' +
+          '<div data-comments-list></div>' +
+          '<div class="comment-form">' +
+          '<input type="text" placeholder="Add a comment…" data-comment-input />' +
+          '<button type="button" class="small" data-comment-send>Comment</button>' +
+          '</div></div>';
+
+        const likeBtn = card.querySelector('[data-like-btn]');
+        likeBtn.addEventListener('click', async () => {
+          const liked = likeBtn.getAttribute('data-liked') === '1';
+          const { json } = await api('/user/posts/' + p.id + '/like', liked ? 'DELETE' : 'POST', null, true);
+          if (json && json.data) {
+            const nowLiked = json.data.liked === true;
+            likeBtn.setAttribute('data-liked', nowLiked ? '1' : '0');
+            likeBtn.textContent = nowLiked ? '♥ Liked' : '♡ Like';
+            const cnt = card.querySelector('[data-like-count]');
+            if (cnt && json.data.likeCount != null) cnt.textContent = json.data.likeCount;
+          }
+        });
+
+        const delPost = card.querySelector('[data-del-post]');
+        if (delPost) {
+          delPost.addEventListener('click', async () => {
+            if (!window.confirm('Delete this post?')) return;
+            await api('/user/posts/' + p.id, 'DELETE', null, true);
+            card.remove();
+          });
+        }
+
+        const commPanel = card.querySelector('[data-comments-panel]');
+        const commList = card.querySelector('[data-comments-list]');
+        const toggleComm = card.querySelector('[data-toggle-comments]');
+        let commentsLoaded = false;
+
+        async function refreshCommentCountOnCard() {
+          const { json } = await api('/user/posts/' + p.id, 'GET', null, true);
+          if (json && json.data && json.data.post && toggleComm) {
+            const n = json.data.post.commentCount;
+            toggleComm.textContent = 'Comments (' + n + ')';
+          }
+        }
+
+        toggleComm.addEventListener('click', async () => {
+          commPanel.classList.toggle('open');
+          if (commPanel.classList.contains('open') && !commentsLoaded) {
+            commentsLoaded = true;
+            await loadCommentsIntoList(p.id, commList);
+          }
+        });
+
+        const commInput = card.querySelector('[data-comment-input]');
+        const commSend = card.querySelector('[data-comment-send]');
+        commSend.addEventListener('click', async () => {
+          const text = commInput.value.trim();
+          if (!text) return;
+          const { json } = await api('/user/posts/' + p.id + '/comments', 'POST', { content: text }, true);
+          if (json && json.data && json.data.comment) {
+            commInput.value = '';
+            if (commList.querySelector('.subtitle')) commList.innerHTML = '';
+            commList.appendChild(renderCommentRow(json.data.comment));
+            commentsLoaded = true;
+            commPanel.classList.add('open');
+            await refreshCommentCountOnCard();
+          }
+        });
+
+        return card;
+      }
+
+      async function loadFeed(opts) {
+        opts = opts || {};
+        const append = opts.append === true;
+        const list = els.feedList;
+        if (!list) return;
+        if (!els.accessToken.value.trim()) {
+          list.innerHTML = '<p class="subtitle" style="padding:12px">Log in to load the feed.</p>';
+          const more = document.getElementById('loadMoreFeedBtn');
+          if (more) more.style.display = 'none';
+          return;
+        }
+        const page = append ? feedPage + 1 : 1;
+        const { json } = await api(
+          '/user/posts/feed?page=' + page + '&limit=' + FEED_PAGE_SIZE,
+          'GET',
+          null,
+          true,
+        );
+        if (!json || !json.data) return;
+        const posts = json.data.posts || [];
+        feedPage = json.data.page;
+        const hasNext = Boolean(json.data.hasNextPage);
+        const loadMoreBtn = document.getElementById('loadMoreFeedBtn');
+        if (loadMoreBtn) loadMoreBtn.style.display = hasNext ? 'block' : 'none';
+        if (!append) list.innerHTML = '';
+        if (!append && posts.length === 0) {
+          list.innerHTML = '<p class="subtitle" style="padding:12px">No posts yet. Write the first one above.</p>';
+          return;
+        }
+        posts.forEach((post) => list.appendChild(renderFeedCard(post)));
       }
 
       async function refreshNavBadgesFromHttp() {
@@ -1178,7 +1618,8 @@
             const { json: res } = await api('/user/friends/requests/' + r.id + '/accept', 'PUT', {}, true);
             if (res && res.data && res.data.otherUserId) {
               document.getElementById('openDmUserId').value = res.data.otherUserId;
-              log('Friends', 'Accepted. Prefilled DM field with friend id — click Open or create DM.');
+              log('Friends', 'Accepted. Prefilled DM field — open Messages tab to start chatting.');
+              setAppTab('messages');
             }
             await loadIncomingFriendRequests();
             await loadOutgoingFriendRequests();
@@ -1233,6 +1674,7 @@
             socialUnreadCount: json.data.unreadCount,
           });
         }
+        if (!els.notificationsList) return;
         els.notificationsList.innerHTML = '';
         notifications.forEach((n) => {
           const row = document.createElement('div');
@@ -1460,6 +1902,7 @@
 
       async function selectChat(chatId, chatMeta) {
         if (!chatId) return;
+        setAppTab('messages');
         if (activeChatId && activeChatId !== chatId) {
           if (typingSent) {
             socketEmit('chat:typing', { chatId: activeChatId, isTyping: false });
@@ -1516,6 +1959,8 @@
             await loadOutgoingFriendRequests();
             await getNotifications();
             await getChats();
+            await loadFeed({ append: false });
+            setAppTab('feed');
             const connected = await ensureSocketConnected();
             if (!connected) {
               log('Socket', 'Could not connect after login. Use Server and connection, then Connect.');
@@ -1633,6 +2078,7 @@
         const { json } = await api('/user/chats/open', 'POST', { otherUserId }, true);
         if (json && json.data && json.data.chatId) {
           log('Open DM', json.message + ' → ' + json.data.chatId);
+          setAppTab('messages');
           await getChats();
           const row = chatsCache.find((c) => c.chatId === json.data.chatId);
           await selectChat(json.data.chatId, row || null);
@@ -1676,28 +2122,50 @@
 
       function wireNavFocusButtons() {
         document.querySelectorAll('.nav-focus-chats').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            const target = document.getElementById('sectionChats');
-            if (target) {
-              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          });
+          btn.addEventListener('click', () => setAppTab('messages'));
         });
         document.querySelectorAll('.nav-focus-notifications').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            const acc = document.getElementById('accNotif');
-            if (acc) {
-              openAccordionSection('accNotif');
-              acc.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-          });
+          btn.addEventListener('click', () => setAppTab('notifications'));
         });
       }
+
+      document.querySelectorAll('[data-app-tab]').forEach((btn) => {
+        btn.addEventListener('click', () => setAppTab(btn.getAttribute('data-app-tab')));
+      });
+
+      bind('submitPostBtn', async () => {
+        const content = document.getElementById('postContentInput').value.trim();
+        const imageUrl = document.getElementById('postImageUrlInput').value.trim();
+        if (!content) {
+          log('Feed', 'Post text is required.');
+          return;
+        }
+        const body = { content };
+        if (imageUrl) body.imageUrl = imageUrl;
+        const { json } = await api('/user/posts', 'POST', body, true);
+        if (json && json.data) {
+          document.getElementById('postContentInput').value = '';
+          document.getElementById('postImageUrlInput').value = '';
+          await loadFeed({ append: false });
+        }
+      });
+      bind('sidebarRefreshFeedBtn', async () => {
+        await loadFeed({ append: false });
+      });
+      bind('loadMoreFeedBtn', async () => {
+        await loadFeed({ append: true });
+      });
+      bind('friendsRefreshAllBtn', async () => {
+        await loadDiscoverUsers();
+        await loadIncomingFriendRequests();
+        await loadOutgoingFriendRequests();
+      });
 
       wireNavFocusButtons();
 
       setAuthMode('login');
       setChatPanelVisible(false);
+      setAppTab('feed');
     </script>
   </body>
 </html>

@@ -13,13 +13,23 @@ import { UserChatService } from './user-chat.service';
 import { UserFriendService } from './user-friend.service';
 import { UserNotificationService } from './user-notification.service';
 import { UserProfileService } from './user-profile.service';
+import { UserSocialService } from './user-social.service';
 import { USER_NOTIFICATIONS_DEFAULT_PAGE_SIZE } from './user.constants';
+import type { CreateCommentDto } from './dto/create_comment.dto';
+import type { CreatePostDto } from './dto/create_post.dto';
+import type { UpdatePostDto } from './dto/update_post.dto';
+import type {
+  GetCommentsResponseEnvelopeDto,
+  GetFeedResponseEnvelopeDto,
+  GetPostResponseEnvelopeDto,
+} from './dto/social_feed_response.dto';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly userProfileService: UserProfileService,
     private readonly userFriendService: UserFriendService,
+    private readonly userSocialService: UserSocialService,
     private readonly userChatService: UserChatService,
     private readonly userNotificationService: UserNotificationService,
   ) {}
@@ -184,5 +194,45 @@ export class UserService {
 
   rejectFriendRequest(userId: string, requestId: string): Promise<ApiEnvelope<{ requestId: string }>> {
     return this.userFriendService.rejectFriendRequest(userId, requestId);
+  }
+
+  getFeed(userId: string, page: number, limit?: number): Promise<GetFeedResponseEnvelopeDto> {
+    return this.userSocialService.getFeed(userId, page, limit);
+  }
+
+  getPostById(userId: string, postId: string): Promise<GetPostResponseEnvelopeDto> {
+    return this.userSocialService.getPostById(userId, postId);
+  }
+
+  createPost(userId: string, dto: CreatePostDto): Promise<GetPostResponseEnvelopeDto> {
+    return this.userSocialService.createPost(userId, dto);
+  }
+
+  updatePost(userId: string, postId: string, dto: UpdatePostDto): Promise<GetPostResponseEnvelopeDto> {
+    return this.userSocialService.updatePost(userId, postId, dto);
+  }
+
+  deletePost(userId: string, postId: string): Promise<ApiEnvelope<null>> {
+    return this.userSocialService.deletePost(userId, postId);
+  }
+
+  likePost(userId: string, postId: string) {
+    return this.userSocialService.likePost(userId, postId);
+  }
+
+  unlikePost(userId: string, postId: string) {
+    return this.userSocialService.unlikePost(userId, postId);
+  }
+
+  listPostComments(userId: string, postId: string, page: number, limit?: number): Promise<GetCommentsResponseEnvelopeDto> {
+    return this.userSocialService.listComments(userId, postId, page, limit);
+  }
+
+  createPostComment(userId: string, postId: string, dto: CreateCommentDto) {
+    return this.userSocialService.createComment(userId, postId, dto);
+  }
+
+  deletePostComment(userId: string, commentId: string): Promise<ApiEnvelope<null>> {
+    return this.userSocialService.deleteComment(userId, commentId);
   }
 }
