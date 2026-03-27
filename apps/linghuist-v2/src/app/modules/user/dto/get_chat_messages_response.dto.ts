@@ -4,6 +4,8 @@ export class ChatMessageItemDto {
   senderId!: string;
   senderName!: string;
   content!: string | null;
+  /// Set when the sender edited; visible text is always `content` in API responses.
+  editedContent!: string | null;
   read!: boolean;
   translatedText!: string | null;
   correctedText!: string | null;

@@ -29,6 +29,8 @@ import { GetChatMessagesResponseEnvelopeDto } from './dto/get_chat_messages_resp
 import { CorrectMessageDto } from './dto/correct_message.dto';
 import { TranslateMessageDto } from './dto/translate_message.dto';
 import { ChatSuggestionDto } from './dto/chat_suggestion.dto';
+import { EditMessageDto } from './dto/edit_message.dto';
+import { UserGateway } from './user.gateway';
 
 type UploadedImageFile = {
   buffer: Buffer;
@@ -40,7 +42,10 @@ type UploadedImageFile = {
 /** Authenticated profile and discovery routes; all JSON success bodies use `{ message, data }`. */
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly userGateway: UserGateway,
+  ) {}
 
   @UseGuards(AuthGuard)
   @Get('me')
@@ -130,6 +135,18 @@ export class UserController {
     @Param('chatId') chatId: string,
   ): Promise<GetChatMessagesResponseEnvelopeDto> {
     return this.userService.getChatMessages(userId, chatId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('chats/messages/:messageId')
+  async editOwnMessage(
+    @CurrentUserId() userId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: EditMessageDto,
+  ) {
+    const envelope = await this.userService.editOwnMessage(userId, messageId, body.content);
+    this.userGateway.notifyMessageEdited(envelope.data.chatId, envelope.data.message);
+    return envelope;
   }
 
   @UseGuards(AuthGuard)

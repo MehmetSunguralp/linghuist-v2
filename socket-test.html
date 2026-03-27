@@ -780,19 +780,26 @@
           extras += '<div><strong>Suggestion:</strong> ' + escapeHtml(message.aiSuggestion) + '</div>';
         }
         const extrasBlock = extras ? '<div class="bubble-extras">' + extras + '</div>' : '';
-        const canCorrect =
-          !mine &&
-          div.dataset.messageId &&
-          (!message.correctedText || !String(message.correctedText).trim());
-        const actionsHtml = !mine && div.dataset.messageId
-          ? '<div class="bubble-menu-wrap">' +
-              '<button type="button" class="bubble-menu-btn" title="Message actions">⋯</button>' +
-              '<div class="bubble-menu">' +
-              '<button type="button" data-action="translate">Translate</button>' +
-              (canCorrect ? '<button type="button" data-action="correct">Correct</button>' : '') +
-              '</div>' +
-            '</div>'
-          : '';
+        let actionsHtml = '';
+        if (!mine && div.dataset.messageId) {
+          const canCorrect = !message.correctedText || !String(message.correctedText).trim();
+          actionsHtml =
+            '<div class="bubble-menu-wrap">' +
+            '<button type="button" class="bubble-menu-btn" title="Message actions">⋯</button>' +
+            '<div class="bubble-menu">' +
+            '<button type="button" data-action="translate">Translate</button>' +
+            (canCorrect ? '<button type="button" data-action="correct">Correct</button>' : '') +
+            '</div>' +
+            '</div>';
+        } else if (mine && div.dataset.messageId && !isPending) {
+          actionsHtml =
+            '<div class="bubble-menu-wrap">' +
+            '<button type="button" class="bubble-menu-btn" title="Message actions">⋯</button>' +
+            '<div class="bubble-menu">' +
+            '<button type="button" data-action="edit">Edit</button>' +
+            '</div>' +
+            '</div>';
+        }
 
         div.innerHTML =
           '<div class="bubble-head"><div>' +
@@ -832,6 +839,9 @@
               }
               if (action === 'correct') {
                 await runCorrectAction(messageId, safeContent);
+              }
+              if (action === 'edit') {
+                await runEditMessageAction(messageId, safeContent);
               }
             });
           });
@@ -897,6 +907,15 @@
           { correctedText: correctedText.trim() },
           true,
         );
+        if (json && json.data && activeChatId) {
+          await loadChatMessages(activeChatId);
+        }
+      }
+
+      async function runEditMessageAction(messageId, currentText) {
+        const next = window.prompt('Edit your message:', currentText || '');
+        if (!next || !next.trim()) return;
+        const { json } = await api('/user/chats/messages/' + messageId, 'PUT', { content: next.trim() }, true);
         if (json && json.data && activeChatId) {
           await loadChatMessages(activeChatId);
         }
@@ -1073,6 +1092,12 @@
         socket.on('chat:read', (data) => {
           if (activeChatId && data.chatId === activeChatId) {
             updateReadIndicators(data.messageIds || []);
+          }
+        });
+
+        socket.on('chat:message:updated', (data) => {
+          if (activeChatId && data.chatId === activeChatId) {
+            loadChatMessages(activeChatId);
           }
         });
       }

@@ -148,8 +148,7 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const message = await this.userService.createChatMessage(userId, chatId, content);
     await this.userService.setTypingStatus(userId, false);
 
-    const chatMessagePayload = { ...message, read: Boolean(message.read) };
-    this.server.to(this.getChatRoom(chatId)).emit(USER_SOCKET_EVENTS.CHAT_MESSAGE, chatMessagePayload);
+    this.server.to(this.getChatRoom(chatId)).emit(USER_SOCKET_EVENTS.CHAT_MESSAGE, message);
     this.server.to(this.getChatRoom(chatId)).emit(USER_SOCKET_EVENTS.CHAT_TYPING, {
       chatId,
       userId,
@@ -226,5 +225,15 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private getChatRoom(chatId: string): string {
     return `chat:${chatId}`;
+  }
+
+  /** Call after HTTP edit: thread clients + inbox list refresh for all participants. */
+  notifyMessageEdited(chatId: string, message: object): void {
+    this.server.to(this.getChatRoom(chatId)).emit(USER_SOCKET_EVENTS.CHAT_MESSAGE_UPDATED, message);
+    void this.userService.getChatParticipantUserIds(chatId).then((participantIds) => {
+      for (const participantId of participantIds) {
+        this.server.to(this.getUserRoom(participantId)).emit(USER_SOCKET_EVENTS.CHAT_INBOX_UPDATED, { chatId });
+      }
+    });
   }
 }

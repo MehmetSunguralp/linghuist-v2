@@ -109,6 +109,8 @@ model Message {
   chatId    String
   senderId  String
   content   String?
+  /// Latest text after an edit; display text is `editedContent ?? content`.
+  editedContent String?
   createdAt DateTime @default(now())
 
   // unread tracking

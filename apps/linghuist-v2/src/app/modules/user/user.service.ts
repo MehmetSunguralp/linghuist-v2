@@ -114,6 +114,11 @@ export class UserService {
     return this.userChatService.suggestNextMessage(userId, chatId, userLanguage, chatLanguage);
   }
 
+  /** Facade: edit own message and clear AI translation cache. */
+  async editOwnMessage(userId: string, messageId: string, newContent: string) {
+    return this.userChatService.editOwnMessage(userId, messageId, newContent);
+  }
+
   /** Facade method for listing chats with interlocutor metadata. */
   async getMyChats(userId: string): Promise<GetUserChatsResponseEnvelopeDto> {
     return this.userChatService.getMyChats(userId);

@@ -3,10 +3,69 @@ import { PrismaService } from '@linghuist-v2/prisma';
 import type { ApiEnvelope } from '../../common/api-envelope.types';
 import { GetChatMessagesResponseEnvelopeDto } from './dto/get_chat_messages_response.dto';
 import { GetUserChatsResponseEnvelopeDto } from './dto/get_user_chats_response.dto';
+import { CHAT_MESSAGE_MAX_LENGTH } from './user.gateway.constants';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 const SUGGESTION_MAX_CHARS = 50;
+
+/** Visible body: latest edit wins over original `content`. */
+function messageDisplayText(content: string | null, editedContent: string | null): string | null {
+  return editedContent ?? content;
+}
+
+/** Truncate at a word boundary when possible; avoids slicing mid-word (e.g. German/English). */
+function truncateToMaxLengthAtWordBoundary(text: string, maxChars: number): string {
+  const t = text.trim();
+  if (t.length <= maxChars) {
+    return t;
+  }
+  const slice = t.slice(0, maxChars);
+  let breakAt = -1;
+  for (let i = slice.length - 1; i >= Math.floor(maxChars * 0.35); i--) {
+    const c = slice[i];
+    if (c === ' ' || c === '\n' || c === '\t' || c === '\u00A0') {
+      breakAt = i;
+      break;
+    }
+  }
+  if (breakAt > 0) {
+    return slice.slice(0, breakAt).trimEnd();
+  }
+  return slice.trimEnd();
+}
+
+const messageSocketPayloadSelect = {
+  id: true,
+  chatId: true,
+  senderId: true,
+  content: true,
+  editedContent: true,
+  read: true,
+  translatedText: true,
+  correctedText: true,
+  aiSuggestion: true,
+  createdAt: true,
+} as const;
+
+function toSocketMessagePayload(message: {
+  id: string;
+  chatId: string;
+  senderId: string;
+  content: string | null;
+  editedContent: string | null;
+  read: boolean;
+  translatedText: string | null;
+  correctedText: string | null;
+  aiSuggestion: string | null;
+  createdAt: Date;
+}) {
+  return {
+    ...message,
+    content: messageDisplayText(message.content, message.editedContent),
+    read: Boolean(message.read),
+  };
+}
 
 @Injectable()
 export class UserChatService {
@@ -58,24 +117,15 @@ export class UserChatService {
 
   /** Creates a chat message persisted to the database. */
   async createChatMessage(userId: string, chatId: string, content: string) {
-    return this.prismaService.message.create({
+    const created = await this.prismaService.message.create({
       data: {
         chatId,
         senderId: userId,
         content,
       },
-      select: {
-        id: true,
-        chatId: true,
-        senderId: true,
-        content: true,
-        read: true,
-        translatedText: true,
-        correctedText: true,
-        aiSuggestion: true,
-        createdAt: true,
-      },
+      select: messageSocketPayloadSelect,
     });
+    return toSocketMessagePayload(created);
   }
 
   /** Marks unread incoming messages as read and returns changed message ids. */
@@ -156,7 +206,7 @@ export class UserChatService {
   ): Promise<ApiEnvelope<{ messageId: string; translatedText: string }>> {
     const message = await this.prismaService.message.findUnique({
       where: { id: messageId },
-      select: { id: true, chatId: true, senderId: true, content: true },
+      select: { id: true, chatId: true, senderId: true, content: true, editedContent: true },
     });
     if (!message) {
       throw new NotFoundException('Message not found');
@@ -169,7 +219,8 @@ export class UserChatService {
     if (message.senderId === userId) {
       throw new BadRequestException('You can only translate the other user messages');
     }
-    if (!message.content?.trim()) {
+    const sourceText = messageDisplayText(message.content, message.editedContent);
+    if (!sourceText?.trim()) {
       throw new BadRequestException('Message has no content to translate');
     }
 
@@ -178,7 +229,7 @@ export class UserChatService {
       sourceLanguage ? `Source language: ${sourceLanguage}.` : '',
       `Target language: ${targetLanguage}.`,
       'Return only the translated text without explanation.',
-      `Message: ${message.content}`,
+      `Message: ${sourceText}`,
     ]
       .filter(Boolean)
       .join('\n');
@@ -217,6 +268,7 @@ export class UserChatService {
       take: 5,
       select: {
         content: true,
+        editedContent: true,
       },
     });
 
@@ -226,7 +278,7 @@ export class UserChatService {
 
     const contextMessages = [...recentMessages]
       .reverse()
-      .map((message) => message.content?.trim())
+      .map((message) => messageDisplayText(message.content, message.editedContent)?.trim())
       .filter((content): content is string => Boolean(content))
       .map((content, index) => `${index + 1}. ${content}`)
       .join('\n');
@@ -239,7 +291,7 @@ export class UserChatService {
       `Context:\n${contextMessages}`,
     ].join('\n');
     let suggestion = await this.generateWithGroq(suggestionPrompt, 90);
-    suggestion = suggestion.slice(0, SUGGESTION_MAX_CHARS);
+    suggestion = truncateToMaxLengthAtWordBoundary(suggestion, SUGGESTION_MAX_CHARS);
 
     const translationPrompt = [
       'Translate the following sentence.',
@@ -294,6 +346,7 @@ export class UserChatService {
         messages: {
           select: {
             content: true,
+            editedContent: true,
             createdAt: true,
           },
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -315,10 +368,69 @@ export class UserChatService {
             interlocutorId: interlocutor?.id ?? null,
             interlocutorName: interlocutor?.name || interlocutor?.username || interlocutor?.id || 'Unknown user',
             interlocutorUsername: interlocutor?.username ?? null,
-            lastMessagePreview: lastMessage?.content ?? null,
+            lastMessagePreview: messageDisplayText(lastMessage?.content ?? null, lastMessage?.editedContent ?? null),
             lastMessageAt: lastMessage?.createdAt ?? null,
           };
         }),
+      },
+    };
+  }
+
+  /** Updates own message text, clears cached translation, preserves original in `content`. */
+  async editOwnMessage(
+    userId: string,
+    messageId: string,
+    newContent: string,
+  ): Promise<
+    ApiEnvelope<{
+      chatId: string;
+      message: ReturnType<typeof toSocketMessagePayload>;
+    }>
+  > {
+    const trimmed = newContent.trim();
+    if (!trimmed) {
+      throw new BadRequestException('Message content is required');
+    }
+    if (trimmed.length > CHAT_MESSAGE_MAX_LENGTH) {
+      throw new BadRequestException('Message is too long');
+    }
+
+    const message = await this.prismaService.message.findUnique({
+      where: { id: messageId },
+      select: { id: true, chatId: true, senderId: true, content: true, editedContent: true },
+    });
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+    if (message.senderId !== userId) {
+      throw new BadRequestException('You can only edit your own messages');
+    }
+    if (message.editedContent != null && message.editedContent.trim() !== '') {
+      throw new BadRequestException('You can only edit a message once');
+    }
+    const isParticipant = await this.isChatParticipant(userId, message.chatId);
+    if (!isParticipant) {
+      throw new NotFoundException('Message not found');
+    }
+    const previous = messageDisplayText(message.content, message.editedContent);
+    if (trimmed === previous) {
+      throw new BadRequestException('Message is unchanged');
+    }
+
+    const updated = await this.prismaService.message.update({
+      where: { id: messageId },
+      data: {
+        editedContent: trimmed,
+        translatedText: null,
+      },
+      select: messageSocketPayloadSelect,
+    });
+
+    return {
+      message: 'Message updated successfully',
+      data: {
+        chatId: message.chatId,
+        message: toSocketMessagePayload(updated),
       },
     };
   }
@@ -338,6 +450,7 @@ export class UserChatService {
         chatId: true,
         senderId: true,
         content: true,
+        editedContent: true,
         read: true,
         translatedText: true,
         correctedText: true,
@@ -362,7 +475,8 @@ export class UserChatService {
           chatId: message.chatId,
           senderId: message.senderId,
           senderName: message.sender?.name || message.sender?.username || message.senderId,
-          content: message.content,
+          content: messageDisplayText(message.content, message.editedContent),
+          editedContent: message.editedContent,
           read: message.read,
           translatedText: message.translatedText,
           correctedText: message.correctedText,
