@@ -148,7 +148,8 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const message = await this.userService.createChatMessage(userId, chatId, content);
     await this.userService.setTypingStatus(userId, false);
 
-    this.server.to(this.getChatRoom(chatId)).emit(USER_SOCKET_EVENTS.CHAT_MESSAGE, message);
+    const chatMessagePayload = { ...message, read: Boolean(message.read) };
+    this.server.to(this.getChatRoom(chatId)).emit(USER_SOCKET_EVENTS.CHAT_MESSAGE, chatMessagePayload);
     this.server.to(this.getChatRoom(chatId)).emit(USER_SOCKET_EVENTS.CHAT_TYPING, {
       chatId,
       userId,
@@ -158,6 +159,24 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId,
       isOnline: true,
       isTyping: false,
+    });
+  }
+
+  @SubscribeMessage(USER_SOCKET_EVENTS.CHAT_READ)
+  async onChatRead(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() payload: unknown,
+  ): Promise<void> {
+    const userId = this.requireUserId(client);
+    const chatId = requireSocketString((payload as { chatId?: unknown })?.chatId, 'chatId');
+
+    await this.assertParticipant(userId, chatId);
+    const readMessageIds = await this.userService.markChatAsRead(userId, chatId);
+
+    this.server.to(this.getChatRoom(chatId)).emit(USER_SOCKET_EVENTS.CHAT_READ, {
+      chatId,
+      readByUserId: userId,
+      messageIds: readMessageIds,
     });
   }
 

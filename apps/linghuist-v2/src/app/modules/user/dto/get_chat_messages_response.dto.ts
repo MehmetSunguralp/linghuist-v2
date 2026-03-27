@@ -4,6 +4,10 @@ export class ChatMessageItemDto {
   senderId!: string;
   senderName!: string;
   content!: string | null;
+  read!: boolean;
+  translatedText!: string | null;
+  correctedText!: string | null;
+  aiSuggestion!: string | null;
   createdAt!: Date;
 }
 

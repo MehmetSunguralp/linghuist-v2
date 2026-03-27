@@ -26,6 +26,9 @@ import { UserNotificationsQueryDto } from './dto/user_notifications_query.dto';
 import { GetUserNotificationsResponseEnvelopeDto } from './dto/get_user_notifications_response.dto';
 import { GetUserChatsResponseEnvelopeDto } from './dto/get_user_chats_response.dto';
 import { GetChatMessagesResponseEnvelopeDto } from './dto/get_chat_messages_response.dto';
+import { CorrectMessageDto } from './dto/correct_message.dto';
+import { TranslateMessageDto } from './dto/translate_message.dto';
+import { ChatSuggestionDto } from './dto/chat_suggestion.dto';
 
 type UploadedImageFile = {
   buffer: Buffer;
@@ -127,6 +130,36 @@ export class UserController {
     @Param('chatId') chatId: string,
   ): Promise<GetChatMessagesResponseEnvelopeDto> {
     return this.userService.getChatMessages(userId, chatId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Put('chats/messages/:messageId/correct')
+  manuallyCorrectMessage(
+    @CurrentUserId() userId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: CorrectMessageDto,
+  ): Promise<ApiEnvelope<{ messageId: string; correctedText: string }>> {
+    return this.userService.manuallyCorrectMessage(userId, messageId, body.correctedText);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('chats/messages/:messageId/translate')
+  translateMessageWithAi(
+    @CurrentUserId() userId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: TranslateMessageDto,
+  ): Promise<ApiEnvelope<{ messageId: string; translatedText: string }>> {
+    return this.userService.translateMessageWithAi(userId, messageId, body.targetLanguage, body.sourceLanguage);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('chats/:chatId/suggestion')
+  suggestNextMessage(
+    @CurrentUserId() userId: string,
+    @Param('chatId') chatId: string,
+    @Body() body: ChatSuggestionDto,
+  ): Promise<ApiEnvelope<{ suggestion: string; translatedSuggestion: string }>> {
+    return this.userService.suggestNextMessage(userId, chatId, body.userLanguage, body.chatLanguage);
   }
 
   @UseGuards(AuthGuard)

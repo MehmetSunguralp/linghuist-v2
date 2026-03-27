@@ -75,6 +75,40 @@ export class UserService {
     return this.userChatService.createChatMessage(userId, chatId, content);
   }
 
+  /** Facade method for marking unread incoming chat messages as read. */
+  async markChatAsRead(userId: string, chatId: string): Promise<string[]> {
+    return this.userChatService.markChatAsRead(userId, chatId);
+  }
+
+  /** Facade method for manual message correction. */
+  async manuallyCorrectMessage(
+    userId: string,
+    messageId: string,
+    correctedText: string,
+  ): Promise<ApiEnvelope<{ messageId: string; correctedText: string }>> {
+    return this.userChatService.manuallyCorrectMessage(userId, messageId, correctedText);
+  }
+
+  /** Facade method for AI-based message translation. */
+  async translateMessageWithAi(
+    userId: string,
+    messageId: string,
+    targetLanguage: string,
+    sourceLanguage?: string,
+  ): Promise<ApiEnvelope<{ messageId: string; translatedText: string }>> {
+    return this.userChatService.translateMessageWithAi(userId, messageId, targetLanguage, sourceLanguage);
+  }
+
+  /** Facade method for AI next-message suggestion. */
+  async suggestNextMessage(
+    userId: string,
+    chatId: string,
+    userLanguage: string,
+    chatLanguage?: string,
+  ): Promise<ApiEnvelope<{ suggestion: string; translatedSuggestion: string }>> {
+    return this.userChatService.suggestNextMessage(userId, chatId, userLanguage, chatLanguage);
+  }
+
   /** Facade method for listing chats with interlocutor metadata. */
   async getMyChats(userId: string): Promise<GetUserChatsResponseEnvelopeDto> {
     return this.userChatService.getMyChats(userId);
