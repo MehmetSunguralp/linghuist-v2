@@ -155,6 +155,13 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId,
       isTyping: false,
     });
+
+    const participantIds = await this.userService.getChatParticipantUserIds(chatId);
+    const inboxPayload = { chatId };
+    for (const participantId of participantIds) {
+      this.server.to(this.getUserRoom(participantId)).emit(USER_SOCKET_EVENTS.CHAT_INBOX_UPDATED, inboxPayload);
+    }
+
     this.server.emit(USER_SOCKET_EVENTS.PRESENCE_UPDATED, {
       userId,
       isOnline: true,
@@ -173,11 +180,15 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this.assertParticipant(userId, chatId);
     const readMessageIds = await this.userService.markChatAsRead(userId, chatId);
 
-    this.server.to(this.getChatRoom(chatId)).emit(USER_SOCKET_EVENTS.CHAT_READ, {
+    const readPayload = {
       chatId,
       readByUserId: userId,
       messageIds: readMessageIds,
-    });
+    };
+    const readParticipantIds = await this.userService.getChatParticipantUserIds(chatId);
+    for (const participantId of readParticipantIds) {
+      this.server.to(this.getUserRoom(participantId)).emit(USER_SOCKET_EVENTS.CHAT_READ, readPayload);
+    }
   }
 
   private async assertParticipant(userId: string, chatId: string): Promise<void> {

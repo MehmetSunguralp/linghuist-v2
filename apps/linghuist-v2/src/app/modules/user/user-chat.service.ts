@@ -47,6 +47,15 @@ export class UserChatService {
     return Boolean(participant);
   }
 
+  /** All user IDs in a chat (for inbox / read-receipt fan-out outside `chat:${chatId}`). */
+  async getChatParticipantUserIds(chatId: string): Promise<string[]> {
+    const rows = await this.prismaService.chatParticipant.findMany({
+      where: { chatId },
+      select: { userId: true },
+    });
+    return rows.map((row) => row.userId);
+  }
+
   /** Creates a chat message persisted to the database. */
   async createChatMessage(userId: string, chatId: string, content: string) {
     return this.prismaService.message.create({

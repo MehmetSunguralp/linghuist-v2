@@ -7,6 +7,8 @@ export const USER_SOCKET_EVENTS = {
   CHAT_TYPING: 'chat:typing',
   CHAT_MESSAGE: 'chat:message',
   CHAT_READ: 'chat:read',
+  /** Sidebar / chat list: emitted to each participant's `user:${userId}` room. */
+  CHAT_INBOX_UPDATED: 'chat:inbox:updated',
 } as const;
 
 export const CHAT_MESSAGE_MAX_LENGTH = 2000;

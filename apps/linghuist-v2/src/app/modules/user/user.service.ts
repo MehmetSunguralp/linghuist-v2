@@ -70,6 +70,11 @@ export class UserService {
     return this.userChatService.isChatParticipant(userId, chatId);
   }
 
+  /** Facade: participant user IDs for socket fan-out to personal rooms. */
+  async getChatParticipantUserIds(chatId: string): Promise<string[]> {
+    return this.userChatService.getChatParticipantUserIds(chatId);
+  }
+
   /** Facade method for persisting new chat messages. */
   async createChatMessage(userId: string, chatId: string, content: string) {
     return this.userChatService.createChatMessage(userId, chatId, content);

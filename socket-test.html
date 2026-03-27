@@ -1033,6 +1033,10 @@
 
         socket.on('presence:updated', () => {});
 
+        socket.on('chat:inbox:updated', () => {
+          getChats();
+        });
+
         socket.on('chat:typing', (data) => {
           if (!activeChatId || data.chatId !== activeChatId) return;
           const mine = me && data.userId === me.id;
@@ -1064,7 +1068,6 @@
             setTyping('');
           }
           getNotifications();
-          getChats();
         });
 
         socket.on('chat:read', (data) => {
@@ -1171,7 +1174,12 @@
             await getMe();
             await getNotifications();
             await getChats();
-            log('Login', 'Success. You can now open a chat.');
+            const connected = await ensureSocketConnected();
+            if (!connected) {
+              log('Socket', 'Could not connect after login. Use Server and connection, then Connect.');
+            } else {
+              log('Login', 'Success. Socket is connected; list and read receipts update in real time.');
+            }
           }
         }
       });
