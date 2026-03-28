@@ -47,3 +47,7 @@ test-output
 
 .env
 .nx/polygraph
+
+# Next.js
+.next
+out

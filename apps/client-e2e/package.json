@@ -1,0 +1,10 @@
+{
+  "name": "@linghuist-v2/client-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "implicitDependencies": [
+      "@linghuist-v2/client"
+    ]
+  }
+}
