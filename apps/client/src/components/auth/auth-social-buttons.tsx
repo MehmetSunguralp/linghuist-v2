@@ -47,11 +47,11 @@ const socialBtnClass =
 export function AuthSocialButtons({ className }: AuthSocialButtonsProps) {
   return (
     <div className={cn('grid grid-cols-2 gap-4', className)}>
-      <button type="button" className={socialBtnClass} onClick={() => {}}>
+      <button type="button" className={socialBtnClass} onClick={() => console.log('Todo: Google Auth')}>
         <GoogleGlyph />
         {authStrings.continueWithGoogle}
       </button>
-      <button type="button" className={socialBtnClass} onClick={() => {}}>
+      <button type="button" className={socialBtnClass} onClick={() => console.log('Todo: Github Auth')}>
         <GitHubGlyph />
         {authStrings.continueWithGitHub}
       </button>
