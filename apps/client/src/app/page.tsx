@@ -1,3 +1,11 @@
+import type { Metadata } from 'next';
+
+/** Public landing; inherits `metadata.template` from the root layout for the document title. */
+export const metadata: Metadata = {
+  title: 'Home',
+};
+
+/** Server Component (default for `page.tsx`). */
 export default function Index() {
   /*
    * Replace the elements below with your own.

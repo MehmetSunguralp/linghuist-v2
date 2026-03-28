@@ -20,6 +20,23 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        /** Auth / marketing palette (Material-style tokens from design HTML) */
+        surface: '#0b1229',
+        'surface-dim': '#0b1229',
+        'surface-container-lowest': '#060d24',
+        'surface-container-low': '#141a32',
+        'surface-container': '#181e36',
+        'surface-container-high': '#222941',
+        'surface-container-highest': '#2d344c',
+        'surface-variant': '#2d344c',
+        'surface-bright': '#323851',
+        'on-surface': '#dce1ff',
+        'on-surface-variant': '#bbc9cf',
+        'primary-container': '#00d4ff',
+        'on-primary': '#003642',
+        'outline-variant': '#3c494e',
+        outline: '#859398',
+        'secondary-container': '#cf5cff',
         border: 'var(--border)',
         input: 'var(--input)',
         ring: 'var(--ring)',
@@ -75,6 +92,14 @@ module.exports = {
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'plus-jakarta': ['var(--font-plus-jakarta)', 'Plus Jakarta Sans', 'ui-sans-serif', 'sans-serif'],
+      },
+      boxShadow: {
+        'auth-header': '0px 0px 40px 0px rgba(0, 212, 255, 0.08)',
+        'auth-glow-hover': '0px 0px 40px 0px rgba(0, 212, 255, 0.2)',
+        'auth-video': '0px 0px 60px 0px rgba(0, 212, 255, 0.1)',
+        'auth-pwa': '0px 20px 40px 0px rgba(0, 0, 0, 0.4)',
+        'auth-nav': '0px -4px 20px 0px rgba(0, 212, 255, 0.05)',
       },
     },
   },
