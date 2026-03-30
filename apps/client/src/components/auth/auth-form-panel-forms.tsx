@@ -9,12 +9,8 @@ import { toast } from 'sonner';
 
 import { AUTH_POST_LOGIN_PATH } from '@/config/auth.constants';
 import { authStrings } from '@/config/auth.strings';
-import {
-  isLoginEnvelope,
-  messageFromUnknownError,
-  postAuthAction,
-  postRequestPasswordReset,
-} from '@/lib/auth-api';
+import { authResponsive } from '@/components/auth/auth-responsive';
+import { isLoginEnvelope, messageFromUnknownError, postAuthAction, postRequestPasswordReset } from '@/lib/auth-api';
 import {
   loginValidationSchema,
   requestPasswordResetValidationSchema,
@@ -23,14 +19,9 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 
-const fieldClass =
-  'w-full rounded-xl border-none bg-surface-container-highest px-4 py-4 text-base text-on-surface outline-none transition-all placeholder:text-slate-400 focus:ring-2 focus:ring-primary-container/50 md:text-sm';
-
-const labelClass =
-  'ml-1 block text-xs font-bold uppercase tracking-widest text-on-surface-variant';
-
-const submitButtonClass =
-  'w-full rounded-xl bg-primary-container py-4 font-bold text-on-primary transition-all enabled:hover:shadow-auth-glow-hover enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none disabled:hover:shadow-none disabled:focus-visible:ring-0 disabled:focus-visible:shadow-none';
+const fieldClass = authResponsive.fieldInput;
+const labelClass = authResponsive.label;
+const submitButtonClass = authResponsive.submitButton;
 
 function AuthFieldWithIcon({
   icon: Icon,
@@ -47,11 +38,11 @@ function AuthFieldWithIcon({
   const errorId = inputProps.id ? `${inputProps.id}-validation` : undefined;
 
   return (
-    <div className="space-y-1">
+    <div className={authResponsive.fieldSpacing}>
       <div className="relative">
         <Icon
           className={cn(
-            'pointer-events-none absolute left-3 top-1/2 z-[1] size-5 -translate-y-1/2',
+            authResponsive.fieldIcon,
             showWarning ? 'text-amber-400/90' : 'text-on-surface-variant',
           )}
           aria-hidden
@@ -70,7 +61,7 @@ function AuthFieldWithIcon({
         />
       </div>
       {showWarning && (
-        <p id={errorId} className="ml-1 text-xs text-amber-400" role="alert">
+        <p id={errorId} className={authResponsive.helperText} role="alert">
           {error}
         </p>
       )}
@@ -152,8 +143,8 @@ export function AuthLoginForm({
   const disabled = modeLocked || apiBusy || !formik.isValid || formik.isSubmitting;
 
   return (
-    <form onSubmit={formik.handleSubmit} className="space-y-6" noValidate>
-      <div className="space-y-2">
+    <form onSubmit={formik.handleSubmit} className={authResponsive.formSpacing} noValidate>
+      <div className={authResponsive.fieldSpacing}>
         <label htmlFor="auth-login-email" className={labelClass}>
           {authStrings.labelEmail}
         </label>
@@ -172,7 +163,7 @@ export function AuthLoginForm({
           disabled={modeLocked || apiBusy}
         />
       </div>
-      <div className="space-y-2">
+      <div className={authResponsive.fieldSpacing}>
         <div className="ml-1 flex items-center justify-between">
           <label htmlFor="auth-login-password" className={labelClass}>
             {authStrings.labelPassword}
@@ -181,7 +172,7 @@ export function AuthLoginForm({
             type="button"
             disabled={modeLocked || apiBusy}
             onClick={() => onForgotPassword(formik.values.email.trim())}
-            className="text-xs font-bold text-primary-container hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(authResponsive.secondaryAction, 'hover:underline disabled:cursor-not-allowed disabled:opacity-50')}
           >
             {authStrings.forgotPassword}
           </button>
@@ -263,8 +254,8 @@ export function AuthSignupForm({
   const disabled = modeLocked || apiBusy || !formik.isValid || formik.isSubmitting;
 
   return (
-    <form onSubmit={formik.handleSubmit} className="space-y-6" noValidate>
-      <div className="space-y-2">
+    <form onSubmit={formik.handleSubmit} className={authResponsive.formSpacing} noValidate>
+      <div className={authResponsive.fieldSpacing}>
         <label htmlFor="auth-signup-email" className={labelClass}>
           {authStrings.labelEmail}
         </label>
@@ -283,7 +274,7 @@ export function AuthSignupForm({
           disabled={modeLocked || apiBusy}
         />
       </div>
-      <div className="space-y-2">
+      <div className={authResponsive.fieldSpacing}>
         <label htmlFor="auth-signup-password" className={labelClass}>
           {authStrings.labelPassword}
         </label>
@@ -303,7 +294,7 @@ export function AuthSignupForm({
           disabled={modeLocked || apiBusy}
         />
       </div>
-      <div className="space-y-2">
+      <div className={authResponsive.fieldSpacing}>
         <label htmlFor="auth-signup-confirm" className={labelClass}>
           {authStrings.labelConfirmPassword}
         </label>
@@ -382,8 +373,8 @@ export function AuthForgotForm({
   const disabled = modeLocked || apiBusy || !formik.isValid || formik.isSubmitting;
 
   return (
-    <form onSubmit={formik.handleSubmit} className="space-y-6" noValidate>
-      <div className="space-y-2">
+    <form onSubmit={formik.handleSubmit} className={authResponsive.formSpacing} noValidate>
+      <div className={authResponsive.fieldSpacing}>
         <label htmlFor="auth-reset-email" className={labelClass}>
           {authStrings.labelEmail}
         </label>

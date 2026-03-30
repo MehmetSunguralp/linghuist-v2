@@ -22,3 +22,12 @@
     'GRAD' 0,
     'opsz' 24;
 }
+
+/* Prevent iOS auto-zoom on focused form controls (triggered for font-size < 16px). */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

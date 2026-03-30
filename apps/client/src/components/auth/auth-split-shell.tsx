@@ -1,5 +1,4 @@
 import { AuthFormPanel } from '@/components/auth/auth-form-panel';
-import { AuthHeader } from '@/components/auth/auth-header';
 import { AuthHeroPanel } from '@/components/auth/auth-hero-panel';
 import { cn } from '@/lib/utils';
 
@@ -18,16 +17,21 @@ export function AuthSplitShell({ className }: AuthSplitShellProps) {
         className,
       )}
     >
-      <AuthHeader />
-      <main className="flex min-h-screen flex-col pt-[72px] md:flex-row">
+      <main className="flex min-h-dvh flex-col md:flex-row">
         <section className="relative hidden flex-1 items-center justify-center overflow-hidden bg-surface-container-lowest md:flex">
-          <div className="absolute top-1/4 -left-20 size-96 rounded-full bg-primary-container/10 blur-[120px]" aria-hidden />
-          <div className="absolute bottom-1/4 -right-20 size-96 rounded-full bg-secondary-container/10 blur-[120px]" aria-hidden />
-          <AuthHeroPanel className="relative z-10 w-full max-w-xl" />
+          <div
+            className="absolute top-1/4 -left-20 size-96 rounded-full bg-primary-container/10 blur-[120px]"
+            aria-hidden
+          />
+          <div
+            className="absolute bottom-1/4 -right-20 size-96 rounded-full bg-secondary-container/10 blur-[120px]"
+            aria-hidden
+          />
+          <AuthHeroPanel className="relative z-10 w-full max-w-[min(92%,44rem)] px-8 py-10 lg:px-12" />
         </section>
 
         <section className="z-20 flex flex-1 flex-col items-center justify-center bg-surface">
-          <AuthFormPanel className="w-full max-w-md" />
+          <AuthFormPanel />
         </section>
       </main>
     </div>

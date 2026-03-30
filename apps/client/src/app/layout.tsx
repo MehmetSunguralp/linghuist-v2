@@ -44,8 +44,8 @@ export const viewport: Viewport = {
 /** Root Server Component: one client island (`AppProviders`) for browser-only UI; `children` stay RSC by default. */
 export default function RootLayout({ children }: { readonly children: ReactNode }) {
   return (
-    <html lang="en" className={cn('font-sans', geist.variable)}>
-      <body className="min-h-dvh antialiased">
+    <html lang="en" className={cn('bg-[#0B1229] font-sans', geist.variable)}>
+      <body className="min-h-dvh bg-[#0B1229] antialiased">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>
