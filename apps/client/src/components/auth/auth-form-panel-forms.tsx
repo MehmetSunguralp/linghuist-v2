@@ -4,11 +4,11 @@ import * as React from 'react';
 import { useFormik } from 'formik';
 import { useRouter } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
-import { Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AUTH_POST_LOGIN_PATH } from '@/config/auth.constants';
-import { authStrings } from '@/config/auth.strings';
+import { enStrings } from '@/config/en.strings';
 import { authResponsive } from '@/components/auth/auth-responsive';
 import { isLoginEnvelope, messageFromUnknownError, postAuthAction, postRequestPasswordReset } from '@/lib/auth-api';
 import {
@@ -22,20 +22,26 @@ import { cn } from '@/lib/utils';
 const fieldClass = authResponsive.fieldInput;
 const labelClass = authResponsive.label;
 const submitButtonClass = authResponsive.submitButton;
+const authStrings = enStrings.auth;
 
 function AuthFieldWithIcon({
   icon: Icon,
   className,
   error,
   touched,
+  allowPasswordToggle = false,
   ...inputProps
 }: React.ComponentProps<'input'> & {
   icon: LucideIcon;
   error?: string;
   touched?: boolean;
+  allowPasswordToggle?: boolean;
 }) {
   const showWarning = Boolean(touched && error);
   const errorId = inputProps.id ? `${inputProps.id}-validation` : undefined;
+  const [showPassword, setShowPassword] = React.useState(false);
+  const canTogglePassword = allowPasswordToggle && inputProps.type === 'password';
+  const resolvedType = canTogglePassword && showPassword ? 'text' : inputProps.type;
 
   return (
     <div className={authResponsive.fieldSpacing}>
@@ -50,15 +56,28 @@ function AuthFieldWithIcon({
         />
         <input
           {...inputProps}
+          type={resolvedType}
           aria-invalid={showWarning}
           aria-describedby={showWarning ? errorId : undefined}
           className={cn(
             fieldClass,
             'pl-11',
+            canTogglePassword && 'pr-11',
             showWarning && 'ring-2 ring-amber-500/45 focus:ring-amber-500/55',
             className,
           )}
         />
+        {canTogglePassword ? (
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute inset-y-0 right-0 grid w-10 place-items-center text-on-surface-variant/85 transition-colors hover:text-on-surface"
+            aria-label={showPassword ? authStrings.hidePassword : authStrings.showPassword}
+            title={showPassword ? authStrings.hidePassword : authStrings.showPassword}
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+          </button>
+        ) : null}
       </div>
       {showWarning && (
         <p id={errorId} className={authResponsive.helperText} role="alert">
@@ -83,12 +102,12 @@ function mergeEmailChange(
 }
 
 type AuthLoginFormProps = {
-  sharedEmail: string;
-  onSharedEmailChange: (v: string) => void;
-  modeLocked: boolean;
-  apiBusy: boolean;
-  setApiBusy: BusySetter;
-  onForgotPassword: (email: string) => void;
+  readonly sharedEmail: string;
+  readonly onSharedEmailChange: (v: string) => void;
+  readonly modeLocked: boolean;
+  readonly apiBusy: boolean;
+  readonly setApiBusy: BusySetter;
+  readonly onForgotPassword: (email: string) => void;
 };
 
 export function AuthLoginForm({
@@ -190,6 +209,7 @@ export function AuthLoginForm({
           error={formik.errors.password}
           touched={formik.touched.password}
           disabled={modeLocked || apiBusy}
+          allowPasswordToggle
         />
       </div>
       <button type="submit" disabled={disabled} className={submitButtonClass}>
@@ -200,11 +220,11 @@ export function AuthLoginForm({
 }
 
 type AuthSignupFormProps = {
-  sharedEmail: string;
-  onSharedEmailChange: (v: string) => void;
-  modeLocked: boolean;
-  apiBusy: boolean;
-  setApiBusy: BusySetter;
+  readonly sharedEmail: string;
+  readonly onSharedEmailChange: (v: string) => void;
+  readonly modeLocked: boolean;
+  readonly apiBusy: boolean;
+  readonly setApiBusy: BusySetter;
 };
 
 export function AuthSignupForm({
@@ -292,6 +312,7 @@ export function AuthSignupForm({
           error={formik.errors.password}
           touched={formik.touched.password}
           disabled={modeLocked || apiBusy}
+          allowPasswordToggle
         />
       </div>
       <div className={authResponsive.fieldSpacing}>
@@ -312,6 +333,7 @@ export function AuthSignupForm({
           error={formik.errors.confirmPassword}
           touched={formik.touched.confirmPassword}
           disabled={modeLocked || apiBusy}
+          allowPasswordToggle
         />
       </div>
       <button type="submit" disabled={disabled} className={submitButtonClass}>
@@ -322,11 +344,11 @@ export function AuthSignupForm({
 }
 
 type AuthForgotFormProps = {
-  initialEmail: string;
-  onSharedEmailChange: (v: string) => void;
-  modeLocked: boolean;
-  apiBusy: boolean;
-  setApiBusy: BusySetter;
+  readonly initialEmail: string;
+  readonly onSharedEmailChange: (v: string) => void;
+  readonly modeLocked: boolean;
+  readonly apiBusy: boolean;
+  readonly setApiBusy: BusySetter;
 };
 
 export function AuthForgotForm({

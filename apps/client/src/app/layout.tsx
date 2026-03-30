@@ -5,26 +5,26 @@ import { Geist } from 'next/font/google';
 
 import { AppProviders } from '@/components/providers/app-providers';
 import { AUTH_LOGO_HEADER_SRC, AUTH_PAGE_BG_HEX } from '@/config/auth.constants';
-import { authStrings } from '@/config/auth.strings';
+import { enStrings } from '@/config/en.strings';
 import { cn } from '@/lib/utils';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 /** SSR: default document metadata; segment layouts/pages can override `title` / `description`. */
 export const metadata: Metadata = {
-  applicationName: authStrings.brandName,
+  applicationName: enStrings.app.brandName,
   title: {
-    default: authStrings.metaTitle,
-    template: `%s | ${authStrings.brandName}`,
+    default: enStrings.auth.metaTitle,
+    template: `%s | ${enStrings.app.brandName}`,
   },
-  description: authStrings.metaDescription,
+  description: enStrings.auth.metaDescription,
   icons: {
     icon: AUTH_LOGO_HEADER_SRC,
     apple: AUTH_LOGO_HEADER_SRC,
   },
   appleWebApp: {
     capable: true,
-    title: authStrings.brandName,
+    title: enStrings.app.brandName,
     statusBarStyle: 'black-translucent',
   },
   formatDetection: {

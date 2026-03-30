@@ -1,6 +1,7 @@
 import * as Yup from 'yup';
 
-import { authStrings } from '@/config/auth.strings';
+import { enStrings } from '@/config/en.strings';
+const authStrings = enStrings.auth;
 
 /** Mirrors `LoginDto`: `@IsEmail()`, `@IsString()` on password (non-empty for UX). */
 export const loginValidationSchema = Yup.object({

@@ -1,6 +1,7 @@
-import { authStrings } from '@/config/auth.strings';
+import { enStrings } from '@/config/en.strings';
 import { AUTH_HERO_VIDEO_URL } from '@/config/auth.constants';
 import { cn } from '@/lib/utils';
+const authStrings = enStrings.auth;
 
 type AuthHeroPanelProps = {
   className?: string;

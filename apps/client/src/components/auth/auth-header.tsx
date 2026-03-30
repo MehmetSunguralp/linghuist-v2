@@ -2,8 +2,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { AUTH_HOME_PATH, AUTH_LOGO_HEADER_SRC } from '@/config/auth.constants';
-import { authStrings } from '@/config/auth.strings';
+import { enStrings } from '@/config/en.strings';
 import { cn } from '@/lib/utils';
+const authStrings = enStrings.auth;
+const brandName = enStrings.app.brandName;
 
 type AuthHeaderProps = {
   className?: string;
@@ -24,7 +26,7 @@ export function AuthHeader({ className }: AuthHeaderProps) {
         >
           <Image
             src={AUTH_LOGO_HEADER_SRC}
-            alt={authStrings.brandName}
+            alt={brandName}
             width={256}
             height={256}
             className="h-9 w-auto object-contain"

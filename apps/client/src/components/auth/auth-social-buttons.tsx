@@ -1,7 +1,8 @@
 'use client';
 
-import { authStrings } from '@/config/auth.strings';
+import { enStrings } from '@/config/en.strings';
 import { cn } from '@/lib/utils';
+const authStrings = enStrings.auth;
 
 type AuthSocialButtonsProps = {
   className?: string;

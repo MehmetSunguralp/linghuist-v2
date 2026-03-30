@@ -5,11 +5,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { AUTH_LOGO_FORM_SRC } from '@/config/auth.constants';
-import { authStrings } from '@/config/auth.strings';
+import { enStrings } from '@/config/en.strings';
 import { AuthForgotForm, AuthLoginForm, AuthSignupForm } from '@/components/auth/auth-form-panel-forms';
 import { authResponsive } from '@/components/auth/auth-responsive';
 import type { AuthTabValue } from '@/types/auth.types';
 import { cn } from '@/lib/utils';
+const authStrings = enStrings.auth;
+const brandName = enStrings.app.brandName;
 
 type AuthFormPanelProps = {
   className?: string;
@@ -60,7 +62,7 @@ export function AuthFormPanel({ className, defaultTab = 'login' }: AuthFormPanel
       <div className={cn('flex flex-col items-center text-left', authResponsive.panelTopGap)}>
         <Image
           src={AUTH_LOGO_FORM_SRC}
-          alt={authStrings.brandName}
+          alt={brandName}
           width={1024}
           height={1024}
           className={authResponsive.logo}

@@ -33,7 +33,12 @@ export function AuthSessionValidator() {
   const enforce = React.useCallback(() => {
     if (!hydrated) return;
     const token = useAuthStore.getState().accessToken;
-    if (!token) return;
+    if (!token) {
+      if (pathRequiresAuth(pathname)) {
+        router.replace(AUTH_SIGN_IN_PATH);
+      }
+      return;
+    }
     if (!isAccessTokenExpired(token)) return;
     useAuthStore.getState().clearSession();
     if (pathRequiresAuth(pathname)) {
@@ -47,8 +52,8 @@ export function AuthSessionValidator() {
 
   React.useEffect(() => {
     if (!hydrated) return;
-    const id = window.setInterval(enforce, CHECK_INTERVAL_MS);
-    return () => window.clearInterval(id);
+    const id = globalThis.setInterval(enforce, CHECK_INTERVAL_MS);
+    return () => globalThis.clearInterval(id);
   }, [hydrated, enforce]);
 
   React.useEffect(() => {

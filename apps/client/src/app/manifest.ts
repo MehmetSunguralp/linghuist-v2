@@ -5,7 +5,7 @@ import {
   PWA_MANIFEST_ICON_1024_SRC,
   PWA_MANIFEST_ICON_256_SRC,
 } from '@/config/auth.constants';
-import { authStrings } from '@/config/auth.strings';
+import { enStrings } from '@/config/en.strings';
 
 /**
  * Web app manifest (served at `/manifest.webmanifest`).
@@ -13,9 +13,9 @@ import { authStrings } from '@/config/auth.strings';
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: authStrings.brandName,
-    short_name: authStrings.brandName,
-    description: authStrings.metaDescription,
+    name: enStrings.app.brandName,
+    short_name: enStrings.app.brandName,
+    description: enStrings.auth.metaDescription,
     start_url: '/',
     scope: '/',
     display: 'standalone',
