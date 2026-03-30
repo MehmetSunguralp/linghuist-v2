@@ -28,6 +28,32 @@ export function avatarUrlFromAccessToken(token: string | null): string | null {
   return null;
 }
 
+/** Two-letter initials for avatar fallback from JWT claims (best-effort). */
+export function initialsFromAccessToken(token: string | null): string {
+  if (!token) return '?';
+  const p = decodeAccessTokenPayload(token);
+  if (!p) return '?';
+  let name = '';
+  if (typeof p.name === 'string') name = p.name;
+  else if (typeof p.preferred_username === 'string') name = p.preferred_username;
+  else if (typeof p.username === 'string') name = p.username;
+  const trimmed = name.trim();
+  if (trimmed) {
+    const parts = trimmed.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      const a = parts[0][0];
+      const b = parts[parts.length - 1][0];
+      if (a && b) return `${a}${b}`.toUpperCase();
+    }
+    return trimmed.slice(0, 2).toUpperCase();
+  }
+  const email = typeof p.email === 'string' ? p.email : '';
+  const local = email.split('@')[0] ?? '';
+  if (local.length >= 2) return local.slice(0, 2).toUpperCase();
+  if (local.length === 1) return local.toUpperCase();
+  return '?';
+}
+
 /**
  * Decode JWT `exp` for client-side session UX (not a security boundary).
  */

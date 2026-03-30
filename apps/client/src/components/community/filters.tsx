@@ -157,7 +157,7 @@ export function CommunityFiltersForm({ filters, onFiltersChange }: CommunityFilt
           placeholder={strings.placeholderUsernameSearch}
           value={filters.usernameQuery}
           onChange={(e) => onFiltersChange({ ...filters, usernameQuery: e.target.value })}
-          className="h-10 w-full rounded-md border border-white/10 bg-[#141a32] py-2 pl-10 pr-3 text-sm text-[#dce1ff] placeholder:text-[#6b7a94] focus:border-[#00d4ff]/50 focus:outline-none focus:ring-1 focus:ring-[#00d4ff]/40"
+          className="h-10 w-full rounded-md border border-white/10 bg-[#141a32] py-2 pl-10 pr-3 text-base text-[#dce1ff] placeholder:text-[#6b7a94] focus:border-[#00d4ff]/50 focus:outline-none focus:ring-1 focus:ring-[#00d4ff]/40 md:text-sm"
         />
       </div>
     </div>

@@ -7,6 +7,7 @@
 import NextTopLoader from 'nextjs-toploader';
 
 import { AuthSessionValidator } from '@/components/auth/auth-session-validator';
+import { PwaViewportNoZoom } from '@/components/providers/pwa-viewport-no-zoom';
 import { Toaster } from '@/components/ui/sonner';
 
 type AppProvidersProps = {
@@ -24,6 +25,7 @@ export function AppProviders({ children }: AppProvidersProps) {
         zIndex={99999}
       />
       <AuthSessionValidator />
+      <PwaViewportNoZoom />
       <Toaster position="top-center" richColors closeButton />
       {children}
     </>

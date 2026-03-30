@@ -12,6 +12,13 @@
         "command": "next dev -p 8080"
       },
       "syncGenerators": ["@nx/js:typescript-sync"]
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/client",
+        "command": "next start -H 0.0.0.0 -p ${PORT:-8080}"
+      }
     }
   }
 }

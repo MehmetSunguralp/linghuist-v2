@@ -4,8 +4,9 @@ import * as React from 'react';
 import { Bell, Check, Filter, MessageCircle, Rss, Users, X } from 'lucide-react';
 import Link from 'next/link';
 
-import { enStrings } from '@/config/en.strings';
+import { CommunityProfileAvatar } from '@/components/community/community-profile-avatar';
 import { Spinner } from '@/components/ui/spinner';
+import { enStrings } from '@/config/en.strings';
 import { useAuthStore } from '@/stores/auth-store';
 
 import { CommunityAgeRangeControl, CommunityFiltersForm } from './filters';
@@ -210,16 +211,16 @@ export function CommunityClient() {
         </div>
       </header>
 
-      <div className="flex h-14 items-center justify-end border-b border-white/5 px-4 md:hidden">
+      <div className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0b1229]/95 px-3 py-2 backdrop-blur md:hidden">
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-md bg-[#181e36] px-3 py-2 text-xs font-semibold"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#181e36] py-3 text-sm font-semibold"
           onClick={() => {
             setDraftFilters(filters);
             setMobileFilterOpen(true);
           }}
         >
-          <Filter className="h-4 w-4" />
+          <Filter className="h-4 w-4 shrink-0" />
           {strings.filterButton}
         </button>
       </div>
@@ -307,14 +308,14 @@ export function CommunityClient() {
           <span className="text-[11px]">{strings.navNotifications}</span>
         </button>
         <Link href="/profile/me" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
-          <img src="/logo_small.webp" alt={strings.navProfile} className="h-6 w-6 rounded-full object-cover" />
+          <CommunityProfileAvatar className="size-6" fallbackClassName="text-[9px]" />
           <span className="text-[11px]">{strings.navProfile}</span>
         </Link>
       </nav>
 
       {isMobileFilterOpen ? (
-        <div className="fixed inset-0 z-50 bg-black/50 p-4 md:hidden">
-          <div className="mx-auto mt-14 max-h-[calc(100dvh-5rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-[#141a32] p-4">
+        <div className="fixed inset-0 z-50 bg-black/50 p-4 pt-[max(1rem,env(safe-area-inset-top))] md:hidden">
+          <div className="mx-auto max-h-[min(calc(100dvh-2rem),calc(100dvh-env(safe-area-inset-top)-2rem))] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-[#141a32] p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold">{strings.filterModalTitle}</h2>
               <button type="button" className="rounded-full p-1 text-[#9caec8]" onClick={() => setMobileFilterOpen(false)}>

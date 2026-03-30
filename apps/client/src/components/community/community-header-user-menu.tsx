@@ -3,10 +3,11 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, LogOut, UserRound } from 'lucide-react';
+import { LogOut, UserRound } from 'lucide-react';
 
-import { AUTH_LOGO_HEADER_SRC, AUTH_SIGN_IN_PATH } from '@/config/auth.constants';
+import { AUTH_SIGN_IN_PATH } from '@/config/auth.constants';
 import { enStrings } from '@/config/en.strings';
+import { CommunityProfileAvatar } from '@/components/community/community-profile-avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,20 +15,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { avatarUrlFromAccessToken } from '@/lib/jwt-utils';
 import { useAuthStore } from '@/stores/auth-store';
 
 const strings = enStrings.community;
 
 export function CommunityHeaderUserMenu() {
   const router = useRouter();
-  const accessToken = useAuthStore((s) => s.accessToken);
   const clearSession = useAuthStore((s) => s.clearSession);
-
-  const avatarSrc = React.useMemo(
-    () => avatarUrlFromAccessToken(accessToken) ?? AUTH_LOGO_HEADER_SRC,
-    [accessToken],
-  );
 
   function onLogout() {
     clearSession();
@@ -39,16 +33,10 @@ export function CommunityHeaderUserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger
         type="button"
-        className="flex items-center gap-1.5 rounded-full border border-white/10 bg-[#181e36] py-0.5 pl-0.5 pr-2 outline-none transition-colors hover:bg-[#222941] focus-visible:ring-2 focus-visible:ring-[#00d4ff]/50"
+        className="rounded-full outline-none ring-offset-2 ring-offset-[#0b1229] transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#00d4ff]/50"
         aria-label={strings.navProfileMenu}
       >
-        <img
-          src={avatarSrc}
-          alt=""
-          className="size-8 rounded-full object-cover"
-          referrerPolicy="no-referrer"
-        />
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#9caec8]" aria-hidden />
+        <CommunityProfileAvatar className="size-8 ring-2 ring-white/10" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem asChild>
