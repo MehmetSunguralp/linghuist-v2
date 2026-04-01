@@ -8,7 +8,7 @@ import { GetUserNotificationsResponseEnvelopeDto } from './dto/get_user_notifica
 import { MeUserResponseEnvelopeDto } from './dto/me_user_response.dto';
 import { UpdateMeDto } from './dto/update_me.dto';
 import type { GetAllUsersFilters, UploadedImageFile } from './types/user.types';
-import { FriendRequestsListEnvelopeDto } from './dto/friend_requests_response.dto';
+import { FriendRequestsListEnvelopeDto, FriendsListEnvelopeDto } from './dto/friend_requests_response.dto';
 import { UserChatService } from './user-chat.service';
 import { UserFriendService } from './user-friend.service';
 import { UserNotificationService } from './user-notification.service';
@@ -186,6 +186,10 @@ export class UserService {
 
   listOutgoingFriendRequests(userId: string): Promise<FriendRequestsListEnvelopeDto> {
     return this.userFriendService.listOutgoingFriendRequests(userId);
+  }
+
+  listFriends(userId: string): Promise<FriendsListEnvelopeDto> {
+    return this.userFriendService.listFriends(userId);
   }
 
   acceptFriendRequest(userId: string, requestId: string) {

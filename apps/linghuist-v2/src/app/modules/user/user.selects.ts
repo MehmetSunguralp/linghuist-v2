@@ -21,6 +21,7 @@ const sharedDetailFields = {
 export const meUserSelect = {
   id: true,
   email: true,
+  role: true,
   ...sharedDetailFields,
 } as const;
 

@@ -33,7 +33,7 @@ import { ChatSuggestionDto } from './dto/chat_suggestion.dto';
 import { OpenDirectChatDto } from './dto/open_direct_chat.dto';
 import { EditMessageDto } from './dto/edit_message.dto';
 import { SendFriendRequestDto } from './dto/send_friend_request.dto';
-import { FriendRequestsListEnvelopeDto } from './dto/friend_requests_response.dto';
+import { FriendRequestsListEnvelopeDto, FriendsListEnvelopeDto } from './dto/friend_requests_response.dto';
 import { CreatePostDto } from './dto/create_post.dto';
 import { UpdatePostDto } from './dto/update_post.dto';
 import { CreateCommentDto } from './dto/create_comment.dto';
@@ -211,6 +211,12 @@ export class UserController {
     this.userGateway.emitNavigationBadgesForUser(body.receiverId);
     this.userGateway.emitNavigationBadgesForUser(userId);
     return result;
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('friends/list')
+  listFriends(@CurrentUserId() userId: string): Promise<FriendsListEnvelopeDto> {
+    return this.userService.listFriends(userId);
   }
 
   @UseGuards(AuthGuard)

@@ -4,6 +4,9 @@ export class FriendRequestPeerDto {
   id!: string;
   username!: string | null;
   name!: string | null;
+  avatarUrl?: string | null;
+  thumbnailUrl?: string | null;
+  country?: string | null;
 }
 
 export class FriendRequestRowDto {
@@ -20,4 +23,13 @@ export class FriendRequestsListDataDto {
 export class FriendRequestsListEnvelopeDto {
   message!: string;
   data!: FriendRequestsListDataDto;
+}
+
+export class FriendsListDataDto {
+  friends!: FriendRequestPeerDto[];
+}
+
+export class FriendsListEnvelopeDto {
+  message!: string;
+  data!: FriendsListDataDto;
 }

@@ -3,7 +3,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class SupabaseService {
-  private readonly client: SupabaseClient;
+  private readonly url: string;
+  private readonly serviceRoleKey: string;
 
   constructor() {
     const url = process.env.SUPABASE_URL;
@@ -11,10 +12,21 @@ export class SupabaseService {
     if (!url || !key) {
       throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
     }
-    this.client = createClient(url, key);
+    this.url = url;
+    this.serviceRoleKey = key;
   }
 
-  getClient() {
-    return this.client;
+  /**
+   * Return a fresh service-role client for each call.
+   * Avoids cross-request auth session leakage on a shared singleton.
+   */
+  getClient(): SupabaseClient {
+    return createClient(this.url, this.serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
   }
 }

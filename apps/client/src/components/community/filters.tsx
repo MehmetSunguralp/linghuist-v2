@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import CountryFlag from 'react-country-flag';
 import { Search } from 'lucide-react';
+import CountryFlag from 'react-country-flag';
 
 import { enStrings } from '@/config/en.strings';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -88,9 +88,7 @@ export function CommunityFiltersForm({ filters, onFiltersChange }: CommunityFilt
             return (
               <SelectItem key={`known-${item}`} value={item}>
                 <span className="inline-flex items-center gap-2">
-                  {item !== 'all' && code ? (
-                    <CountryFlag countryCode={code} svg style={{ width: '1.1em', height: '1.1em' }} />
-                  ) : null}
+                  {item !== 'all' && code ? <CountryFlag countryCode={code} svg style={{ width: '1.1em', height: '1.1em' }} /> : null}
                   <span>{item === 'all' ? strings.filterKnownAll : item}</span>
                 </span>
               </SelectItem>
@@ -109,9 +107,7 @@ export function CommunityFiltersForm({ filters, onFiltersChange }: CommunityFilt
             return (
               <SelectItem key={`learning-${item}`} value={item}>
                 <span className="inline-flex items-center gap-2">
-                  {item !== 'all' && code ? (
-                    <CountryFlag countryCode={code} svg style={{ width: '1.1em', height: '1.1em' }} />
-                  ) : null}
+                  {item !== 'all' && code ? <CountryFlag countryCode={code} svg style={{ width: '1.1em', height: '1.1em' }} /> : null}
                   <span>{item === 'all' ? strings.filterLearningAll : item}</span>
                 </span>
               </SelectItem>
@@ -130,9 +126,7 @@ export function CommunityFiltersForm({ filters, onFiltersChange }: CommunityFilt
             return (
               <SelectItem key={`country-${item}`} value={item}>
                 <span className="inline-flex items-center gap-2">
-                  {item !== 'all' && code ? (
-                    <CountryFlag countryCode={code} svg style={{ width: '1.1em', height: '1.1em' }} />
-                  ) : null}
+                  {item !== 'all' && code ? <CountryFlag countryCode={code} svg style={{ width: '1.1em', height: '1.1em' }} /> : null}
                   <span>{item === 'all' ? strings.filterCountryAll : item}</span>
                 </span>
               </SelectItem>

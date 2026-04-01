@@ -1,9 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import * as React from 'react';
 import CountryFlag from 'react-country-flag';
 
 import { enStrings } from '@/config/en.strings';
+import { useAuthStore } from '@/stores/auth-store';
+import { resolveSignedStorageUrl } from '@/lib/storage-url';
 
 import type { DiscoveryUser } from '@/types/community.types';
 import { codeFromCountry, codeFromLanguage } from './utils';
@@ -27,20 +30,39 @@ function LanguageFlagBadge({ label }: { readonly label?: string }) {
       className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#2a3150]"
       title={label}
     >
-      <CountryFlag countryCode={code} svg className="h-6 w-6 rounded-sm object-cover" />
+      <CountryFlag countryCode={code} svg style={{ width: '1rem', height: '1rem' }} />
     </span>
   );
 }
 
 export function CommunityUserCard({ user }: { readonly user: DiscoveryUser }) {
-  const avatar = user.thumbnailUrl ?? user.avatarUrl ?? '/logo_small.webp';
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [avatar, setAvatar] = React.useState('/logo_small.webp');
+  React.useEffect(() => {
+    let active = true;
+    async function resolveAvatar() {
+      const rawPath = user.thumbnailUrl ?? user.avatarUrl ?? '';
+      if (!rawPath) {
+        if (active) setAvatar('/logo_small.webp');
+        return;
+      }
+      const signed = await resolveSignedStorageUrl(rawPath, accessToken);
+      if (!active) return;
+      setAvatar(signed || rawPath || '/logo_small.webp');
+    }
+    void resolveAvatar();
+    return () => {
+      active = false;
+    };
+  }, [user.thumbnailUrl, user.avatarUrl, accessToken, user.id]);
   const native = user.languagesKnown[0];
   const learning = user.languagesLearning[0];
   const nationalityCode = codeFromCountry(user.country);
+  const profilePath = user.username ? `/profile/${user.username}` : `/profile/${user.id}`;
 
   return (
     <Link
-      href={`/profile/${user.id}`}
+      href={profilePath}
       className="rounded-2xl border border-white/5 bg-[#181e36] p-4 transition-colors hover:bg-[#1e2540]"
     >
       <div className="mb-3 flex items-center gap-3">
@@ -54,7 +76,7 @@ export function CommunityUserCard({ user }: { readonly user: DiscoveryUser }) {
           </div>
           {nationalityCode ? (
             <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center overflow-hidden rounded-full border border-[#181e36] bg-[#181e36] shadow-sm">
-              <CountryFlag countryCode={nationalityCode} svg className="h-4 w-4 object-cover" />
+              <CountryFlag countryCode={nationalityCode} svg style={{ width: '0.7rem', height: '0.7rem' }} />
             </span>
           ) : null}
         </div>

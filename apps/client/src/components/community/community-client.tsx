@@ -10,7 +10,6 @@ import { enStrings } from '@/config/en.strings';
 import { useAuthStore } from '@/stores/auth-store';
 
 import { CommunityAgeRangeControl, CommunityFiltersForm } from './filters';
-import { CommunityHeaderUserMenu } from './community-header-user-menu';
 import type { CommunityFilters, DiscoveryUser, UsersResponse } from '@/types/community.types';
 import {
   DEFAULT_COMMUNITY_AGE_MAX,
@@ -183,34 +182,6 @@ export function CommunityClient() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[#0b1229] text-[#dce1ff]">
-      <header className="hidden border-b border-white/5 bg-[#0b1229]/90 backdrop-blur md:block">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-2 text-[#00d4ff]">
-            <Users className="h-5 w-5" />
-            <span className="text-xl font-bold">{enStrings.app.brandName}</span>
-          </div>
-          <nav className="flex items-center gap-5 text-sm font-medium">
-            <Link href="/community" className="inline-flex items-center gap-1 text-[#00d4ff]">
-              <Users className="h-4 w-4" />
-              {strings.navCommunity}
-            </Link>
-            <button type="button" className="inline-flex items-center gap-1 text-[#8ea0ba] transition-colors hover:text-white">
-              <Rss className="h-4 w-4" />
-              {strings.navFeed}
-            </button>
-            <button type="button" className="inline-flex items-center gap-1 text-[#8ea0ba] transition-colors hover:text-white">
-              <MessageCircle className="h-4 w-4" />
-              {strings.navChats}
-            </button>
-            <button type="button" className="inline-flex items-center gap-1 text-[#8ea0ba] transition-colors hover:text-white">
-              <Bell className="h-4 w-4" />
-              {strings.navNotifications}
-            </button>
-            <CommunityHeaderUserMenu />
-          </nav>
-        </div>
-      </header>
-
       <div className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0b1229]/95 px-3 py-2 backdrop-blur md:hidden">
         <button
           type="button"

@@ -14,6 +14,7 @@ export class MeUserResponseDto {
   isTyping!: boolean;
   lastOnline?: Date | null;
   bio?: string | null;
+  role!: 'USER' | 'ADMIN' | 'MODERATOR';
 }
 
 export class MeUserResponseEnvelopeDto {

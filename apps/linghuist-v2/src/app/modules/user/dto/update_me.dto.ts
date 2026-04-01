@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsInt,
+  MaxLength,
   IsOptional,
   IsString,
   Max,
@@ -52,5 +53,6 @@ export class UpdateMeDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(300)
   bio?: string | null;
 }

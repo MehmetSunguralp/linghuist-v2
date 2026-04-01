@@ -58,12 +58,19 @@ export function normalizeLanguageLabel(language?: string): string {
 export function codeFromLanguage(language?: string): string | undefined {
   if (!language) return undefined;
   const normalized = language.trim().toLowerCase();
+  const bcp47Base = normalized.split('-')[0];
   const mapDirect = LANGUAGE_TO_COUNTRY[normalized];
   if (mapDirect) return mapDirect;
+  const mapBase = LANGUAGE_TO_COUNTRY[bcp47Base];
+  if (mapBase) return mapBase;
 
   if (normalized.length === 2) {
     const fromIso = ISO639_1_TO_TERRITORY[normalized];
     if (fromIso) return LANGUAGE_TO_COUNTRY[normalized] ?? fromIso;
+  }
+  if (bcp47Base.length === 2) {
+    const fromIsoBase = ISO639_1_TO_TERRITORY[bcp47Base];
+    if (fromIsoBase) return LANGUAGE_TO_COUNTRY[bcp47Base] ?? fromIsoBase;
   }
 
   const code = ISO6391.getCode(language);

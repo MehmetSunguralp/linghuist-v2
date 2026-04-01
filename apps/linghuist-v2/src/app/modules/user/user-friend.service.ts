@@ -8,13 +8,16 @@ import {
 import { FriendRequestStatus } from '@prisma/client';
 import { PrismaService } from '@linghuist-v2/prisma';
 import type { ApiEnvelope } from '../../common/api-envelope.types';
-import { FriendRequestsListEnvelopeDto } from './dto/friend_requests_response.dto';
+import { FriendRequestsListEnvelopeDto, FriendsListEnvelopeDto } from './dto/friend_requests_response.dto';
 import { UserNotificationService } from './user-notification.service';
 
 const peerSelect = {
   id: true,
   username: true,
   name: true,
+  avatarUrl: true,
+  thumbnailUrl: true,
+  country: true,
 } as const;
 
 @Injectable()
@@ -126,6 +129,29 @@ export class UserFriendService {
           peer: row.receiver,
         })),
       },
+    };
+  }
+
+  async listFriends(userId: string): Promise<FriendsListEnvelopeDto> {
+    const rows = await this.prismaService.friendRequest.findMany({
+      where: {
+        status: FriendRequestStatus.ACCEPTED,
+        OR: [{ senderId: userId }, { receiverId: userId }],
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        senderId: true,
+        receiverId: true,
+        sender: { select: peerSelect },
+        receiver: { select: peerSelect },
+      },
+    });
+
+    const friends = rows.map((row) => (row.senderId === userId ? row.receiver : row.sender));
+    const deduped = [...new Map(friends.map((friend) => [friend.id, friend])).values()];
+    return {
+      message: 'Friends list',
+      data: { friends: deduped },
     };
   }
 

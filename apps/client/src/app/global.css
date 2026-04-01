@@ -1,5 +1,6 @@
 @import "../../../../node_modules/tw-animate-css/dist/tw-animate.css";
 @import "../../../../node_modules/shadcn/dist/tailwind.css";
+@import "../../../../node_modules/react-advanced-cropper/dist/style.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,8 +25,14 @@ html {
   line-height: 1.5;
   tab-size: 4;
   scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
 }
 body {
+  scrollbar-width: none;
   font-family: inherit;
   line-height: inherit;
   margin: 0;
