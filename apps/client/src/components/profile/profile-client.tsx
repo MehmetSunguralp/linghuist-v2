@@ -23,68 +23,16 @@ import { useAuthStore } from '@/stores/auth-store';
 import { AUTH_SIGN_IN_PATH } from '@/config/auth.constants';
 import { resolveSignedStorageUrl } from '@/lib/storage-url';
 import { buildNumericAgeOptions } from '@/lib/wheel-picker-builders';
-
-type ProfileClientProps = {
-  readonly profileId: string;
-};
-
-type MeUser = {
-  id: string;
-  email?: string;
-  username?: string | null;
-  name?: string | null;
-  avatarUrl?: string | null;
-  thumbnailUrl?: string | null;
-  languagesKnown: string[];
-  languagesLearning: string[];
-  country?: string | null;
-  age?: number | null;
-  bio?: string | null;
-  role?: 'USER' | 'ADMIN' | 'MODERATOR';
-};
-
-type Envelope<T> = {
-  message: string;
-  data: T;
-};
-
-type ApiEnvelope = {
-  message: string;
-};
-
-type LanguageRow = {
-  id: string;
-  code: string;
-  level: string;
-};
-
-type FriendRequestRow = {
-  id: string;
-  status: string;
-  createdAt: string;
-  peer: {
-    id: string;
-    username: string | null;
-    name: string | null;
-    avatarUrl?: string | null;
-    thumbnailUrl?: string | null;
-    country?: string | null;
-  };
-};
-
-type FriendRequestsEnvelope = {
-  message: string;
-  data: {
-    requests: FriendRequestRow[];
-  };
-};
-
-type FriendsListEnvelope = {
-  message: string;
-  data: {
-    friends: FriendRequestRow['peer'][];
-  };
-};
+import type {
+  ApiEnvelope,
+  Envelope,
+  FriendRequestRow,
+  FriendRequestsEnvelope,
+  FriendsListEnvelope,
+  LanguageRow,
+  ProfileClientProps,
+  MeUser,
+} from '@/types/profile.types';
 
 const strings = enStrings.profile;
 const communityStrings = enStrings.community;

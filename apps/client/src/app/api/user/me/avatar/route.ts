@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const bearer = request.headers.get('authorization');
   const contentType = request.headers.get('content-type');
 
-  const res = await fetch(`${base}/api/user/me/avatar`, {
+  const requestInit: RequestInit & { duplex?: 'half' } = {
     method: 'POST',
     headers: {
       ...(bearer ? { Authorization: bearer } : {}),
@@ -25,7 +25,9 @@ export async function POST(request: Request) {
     duplex: 'half',
     body: request.body,
     cache: 'no-store',
-  });
+  };
+
+  const res = await fetch(`${base}/api/user/me/avatar`, requestInit);
 
   const text = await res.text();
   let data: unknown = {};

@@ -111,9 +111,10 @@ export function CommunityClient() {
         if (!active) return;
         setError(err instanceof Error ? err.message : 'Failed to load users');
       } finally {
-        if (!active) return;
-        setLoadingFirstPage(false);
-        setLoadingMore(false);
+        if (active) {
+          setLoadingFirstPage(false);
+          setLoadingMore(false);
+        }
       }
     }
 
