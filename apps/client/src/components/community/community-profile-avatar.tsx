@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { initialsFromAccessToken } from '@/lib/jwt-utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
-import { resolveSignedStorageUrl } from '@/lib/storage-url';
+import { imageSrcAfterSigning, resolveSignedStorageUrl } from '@/lib/storage-url';
 
 let cachedOwnAvatarPath = '';
 let cachedOwnAvatarResolved = '';
@@ -51,7 +51,7 @@ export function CommunityProfileAvatar({
       }
       const signed = await resolveSignedStorageUrl(rawPath, accessToken);
       if (!active) return;
-      const next = signed || rawPath || '';
+      const next = imageSrcAfterSigning(signed, rawPath);
       setResolvedAvatarUrl(next);
       if (next) {
         cachedOwnAvatarPath = rawPath;

@@ -21,7 +21,7 @@ import { enStrings } from '@/config/en.strings';
 import { codeFromCountry, codeFromLanguage, countryOptions, languageOptions, normalizeLanguageLabel } from '@/components/community/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { AUTH_SIGN_IN_PATH } from '@/config/auth.constants';
-import { resolveSignedStorageUrl } from '@/lib/storage-url';
+import { imageSrcAfterSigning, resolveSignedStorageUrl } from '@/lib/storage-url';
 import { buildNumericAgeOptions } from '@/lib/wheel-picker-builders';
 import type {
   ApiEnvelope,
@@ -192,7 +192,7 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
       const rawPath = profile.avatarUrl ?? profile.thumbnailUrl ?? '';
       const signed = await resolveSignedStorageUrl(rawPath, accessToken);
       if (!active) return;
-      setAvatarSrc(signed || rawPath || '');
+      setAvatarSrc(imageSrcAfterSigning(signed, rawPath));
     }
     void resolveAvatar();
     return () => {
@@ -290,7 +290,7 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
           const rawPath = peer.thumbnailUrl ?? peer.avatarUrl ?? '';
           if (!rawPath) return [peer.id, ''] as const;
           const signed = await resolveSignedStorageUrl(rawPath, accessToken);
-          return [peer.id, signed || rawPath || ''] as const;
+          return [peer.id, imageSrcAfterSigning(signed, rawPath)] as const;
         }),
       );
       if (!active) return;

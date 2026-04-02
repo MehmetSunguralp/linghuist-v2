@@ -2,13 +2,24 @@
 
 const signedUrlCache = new Map<string, string>();
 
-function isAlreadyUrl(value: string): boolean {
+function isDirectImageUrl(value: string): boolean {
   return /^https?:\/\//i.test(value) || /^data:/i.test(value) || /^blob:/i.test(value);
+}
+
+/**
+ * After calling {@link resolveSignedStorageUrl}, use this for `<img src>`.
+ * Bucket-relative paths (e.g. `profilePictures/uuid/file.webp`) must never be used as a
+ * browser URL: they resolve relative to the current route and 404 (e.g. `/profile/profilePictures/...`).
+ */
+export function imageSrcAfterSigning(signed: string, rawPath: string): string {
+  if (signed) return signed;
+  if (rawPath && isDirectImageUrl(rawPath)) return rawPath;
+  return '';
 }
 
 export async function resolveSignedStorageUrl(path: string | null | undefined, accessToken: string | null): Promise<string> {
   if (!path) return '';
-  if (isAlreadyUrl(path)) return path;
+  if (isDirectImageUrl(path)) return path;
   if (!accessToken) return '';
   const cached = signedUrlCache.get(path);
   if (cached) return cached;

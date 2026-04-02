@@ -6,7 +6,7 @@ import CountryFlag from 'react-country-flag';
 
 import { enStrings } from '@/config/en.strings';
 import { useAuthStore } from '@/stores/auth-store';
-import { resolveSignedStorageUrl } from '@/lib/storage-url';
+import { imageSrcAfterSigning, resolveSignedStorageUrl } from '@/lib/storage-url';
 
 import type { DiscoveryUser } from '@/types/community.types';
 import { codeFromCountry, codeFromLanguage } from './utils';
@@ -48,7 +48,7 @@ export function CommunityUserCard({ user }: { readonly user: DiscoveryUser }) {
       }
       const signed = await resolveSignedStorageUrl(rawPath, accessToken);
       if (!active) return;
-      setAvatar(signed || rawPath || '/logo_small.webp');
+      setAvatar(imageSrcAfterSigning(signed, rawPath) || '/logo_small.webp');
     }
     void resolveAvatar();
     return () => {
