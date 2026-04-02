@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import ISO6391 from 'iso-639-1';
-import { Bell, BookText, Languages, Lock, MessageCircle, Pencil, Plus, Rss, ShieldAlert, Trash2, Upload, UserRound, UserRoundPen, Users, X } from 'lucide-react';
+import { Bell, BookText, Eye, Languages, Lock, MapPin, MessageCircle, Pencil, Plus, Rss, ShieldAlert, Trash2, Upload, UserRound, UserRoundPen, Users, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CountryFlag from 'react-country-flag';
@@ -13,12 +13,13 @@ import imageCompression from 'browser-image-compression';
 import { Cropper, type CropperRef } from 'react-advanced-cropper';
 
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WheelPicker, WheelPickerWrapper } from '@/components/wheel-picker';
 import { enStrings } from '@/config/en.strings';
-import { codeFromCountry, codeFromLanguage, countryOptions, languageOptions, normalizeLanguageLabel } from '@/components/community/utils';
+import { codeFromCountry, codeFromLanguage, languageOptions, normalizeLanguageLabel } from '@/components/community/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { AUTH_SIGN_IN_PATH } from '@/config/auth.constants';
 import { imageSrcAfterSigning, resolveSignedStorageUrl } from '@/lib/storage-url';
@@ -139,6 +140,7 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
   const [deletingAccount, setDeletingAccount] = React.useState(false);
   const [friendAvatarMap, setFriendAvatarMap] = React.useState<Record<string, string>>({});
   const [draftAge, setDraftAge] = React.useState(18);
+  const [locatingCountry, setLocatingCountry] = React.useState(false);
 
   React.useEffect(() => {
     let active = true;
@@ -167,7 +169,7 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
         setBio(json.data.bio ?? '');
         setCountry(json.data.country ?? '');
         setAge(json.data.age ?? 18);
-        setKnownRows(mapCodesToRows(json.data.languagesKnown ?? [], strings.levelFluent));
+        setKnownRows(mapCodesToRows(json.data.languagesKnown ?? [], strings.levelNative));
         setLearningRows(mapCodesToRows(json.data.languagesLearning ?? [], strings.levelBeginner));
       } catch (error) {
         if (!active) return;
@@ -315,6 +317,12 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
       if (bio.length > 300) {
         throw new Error(strings.bioTooLong);
       }
+      if (knownRows.filter((row) => row.code).length < 1) {
+        throw new Error(strings.minNativeLanguageRequired);
+      }
+      if (learningRows.filter((row) => row.code).length < 1) {
+        throw new Error(strings.minLearningLanguageRequired);
+      }
 
       const payload = {
         bio,
@@ -400,7 +408,11 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
   function applyLanguageModal() {
     if (!modalMode) return;
     const cleaned = draftRows.filter((row) => row.code);
-    if (modalMode === 'known') setKnownRows(cleaned);
+    if (cleaned.length < 1) {
+      toast.error(modalMode === 'known' ? strings.minNativeLanguageRequired : strings.minLearningLanguageRequired);
+      return;
+    }
+    if (modalMode === 'known') setKnownRows(cleaned.map((row) => ({ ...row, level: strings.levelNative })));
     else setLearningRows(cleaned);
     setModalMode(null);
   }
@@ -410,7 +422,54 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
   }
 
   function removeDraftRowAt(index: number) {
-    setDraftRows((prev) => prev.filter((_, rowIndex) => rowIndex !== index));
+    setDraftRows((prev) => {
+      if (prev.length <= 1) {
+        toast.error(modalMode === 'known' ? strings.minNativeLanguageRequired : strings.minLearningLanguageRequired);
+        return prev;
+      }
+      return prev.filter((_, rowIndex) => rowIndex !== index);
+    });
+  }
+
+  async function onUpdateLocation() {
+    if (!isOwnProfile) return;
+    if (typeof window === 'undefined' || !navigator?.geolocation) {
+      toast.error(strings.locationUnsupported);
+      return;
+    }
+    setLocatingCountry(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 60_000,
+        });
+      });
+      const { latitude, longitude } = position.coords;
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`,
+        { cache: 'no-store' },
+      );
+      const json = (await res.json().catch(() => ({}))) as { address?: { country?: string; country_code?: string } };
+      const countryFromName = json?.address?.country?.trim() ?? '';
+      const countryCode = json?.address?.country_code?.trim().toUpperCase() ?? '';
+      const countryFromCode =
+        countryCode && typeof Intl !== 'undefined' && 'DisplayNames' in Intl
+          ? new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode) ?? ''
+          : '';
+      const resolvedCountry = countryFromName || countryFromCode;
+      if (!resolvedCountry) {
+        toast.error(strings.locationResolveError);
+        return;
+      }
+      setCountry(resolvedCountry);
+      toast.success(strings.locationUpdated);
+    } catch {
+      toast.error(strings.locationResolveError);
+    } finally {
+      setLocatingCountry(false);
+    }
   }
 
   function onPickAvatar(file?: File) {
@@ -497,6 +556,7 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
   const profileName = profile?.name || profile?.username || strings.profileHeadingFallback;
   const username = profile?.username ? `@${profile.username}` : `@${profileId}`;
   const isAdmin = profile?.role === 'ADMIN';
+  const shownCountry = country || strings.countryNotSet;
 
   if (loading) {
     return <div className="min-h-dvh bg-[#0b1229]" aria-busy="true" aria-label={strings.loadingProfile} />;
@@ -507,16 +567,8 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
       <main className="mx-auto w-full max-w-6xl space-y-6 px-4 pt-6 pb-28 md:px-8 md:pt-8 md:pb-10">
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div className="relative flex flex-col items-center gap-8 overflow-hidden rounded-3xl bg-[#141a32] p-8 md:flex-row md:items-start lg:col-span-8">
-            <div className="group relative">
-              <button
-                type="button"
-                className="size-32 overflow-hidden rounded-full ring-4 ring-[#00d4ff]/20 md:size-40"
-                onClick={() => {
-                  if (avatarSrc) setAvatarPreviewOpen(true);
-                }}
-                disabled={!avatarSrc}
-                aria-label={strings.viewProfileImage}
-              >
+            <div className="relative">
+              <div className="size-32 overflow-hidden rounded-full ring-4 ring-[#00d4ff]/20 md:size-40">
                 {avatarSrc ? (
                   <img src={avatarSrc} alt={profileName} className="h-full w-full object-cover" />
                 ) : (
@@ -524,19 +576,39 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
                     {profileName.charAt(0).toUpperCase()}
                   </div>
                 )}
-              </button>
+              </div>
 
-              {isOwnProfile ? (
-                <button
-                  type="button"
-                  disabled={avatarUploading}
-                  className="absolute inset-0 flex items-center justify-center rounded-full bg-[#0b1229]/60 opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-100"
-                  onClick={() => fileInputRef.current?.click()}
-                  aria-label={strings.uploadProfilePicture}
-                >
-                  {avatarUploading ? <Upload className="size-7 animate-pulse text-[#00d4ff]" /> : <UserRoundPen className="size-7 text-[#00d4ff]" />}
-                </button>
-              ) : null}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="absolute right-0 bottom-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-[#181e36] text-[#dce1ff] shadow-md transition-colors hover:bg-[#222941]"
+                    aria-label={strings.profileImageMenu}
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (avatarSrc) setAvatarPreviewOpen(true);
+                    }}
+                    disabled={!avatarSrc}
+                  >
+                    <Eye className="size-4" />
+                    {strings.viewProfileImage}
+                  </DropdownMenuItem>
+                  {isOwnProfile ? (
+                    <DropdownMenuItem
+                      disabled={avatarUploading}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {avatarUploading ? <Upload className="size-4 animate-pulse" /> : <UserRoundPen className="size-4" />}
+                      {strings.uploadProfilePicture}
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <input
@@ -557,23 +629,27 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
                   {username}
                 </p>
               </div>
-              <div className="w-full rounded-2xl bg-[#181e36] p-4 text-left md:w-auto">
+              <button
+                type="button"
+                className="group relative w-full rounded-2xl bg-[#181e36] p-4 pr-12 text-left md:w-auto"
+                onClick={() => {
+                  if (!isOwnProfile) return;
+                  setDraftBio(bio);
+                  setBioModalOpen(true);
+                }}
+                disabled={!isOwnProfile}
+                aria-label={strings.editBio}
+              >
                 <p className="text-sm leading-relaxed text-[#dce1ff]/80 italic">
                   {bio || strings.bioFallback}
                 </p>
-              </div>
+                {isOwnProfile ? (
+                  <span className="absolute top-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-[#2a3150] text-[#9caec8] transition-colors group-hover:text-[#dce1ff]">
+                    <Pencil className="size-3.5" />
+                  </span>
+                ) : null}
+              </button>
               <div className="flex flex-wrap justify-center gap-3 pt-2 md:justify-start">
-                <Button
-                  onClick={() => {
-                    setDraftBio(bio);
-                    setBioModalOpen(true);
-                  }}
-                  className="h-10 bg-[#00d4ff] px-5 font-bold text-[#003642] hover:bg-[#00d4ff]/90"
-                  disabled={!isOwnProfile}
-                >
-                  <UserRoundPen className="size-4" />
-                  {strings.editBio}
-                </Button>
                 <Button
                   variant="secondary"
                   className="h-10 bg-[#2d344c] px-5 text-[#dce1ff] hover:bg-[#323851]"
@@ -596,8 +672,6 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
                 </h3>
               </div>
               <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-[#181e36] p-6 text-center">
-                <p className="text-sm font-semibold">{strings.noPostsTitle}</p>
-                <p className="mt-1 mb-4 text-xs text-[#9caec8]">{strings.noPostsSubtitle}</p>
                 <Button
                   className="bg-[#00d4ff] text-[#003642] hover:bg-[#00d4ff]/90"
                   onClick={() => toast.info(strings.createPostComingSoon)}
@@ -658,27 +732,26 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
                   <label htmlFor="profile-country" className="ml-1 text-[10px] font-bold tracking-[0.2em] uppercase text-[#9caec8]">
                     {strings.currentCountry}
                   </label>
-                  <Select value={country || '__empty_country__'} onValueChange={(value) => setCountry(value === '__empty_country__' ? '' : value)}>
-                    <SelectTrigger id="profile-country" className="h-12 border-none bg-[#2d344c]">
-                      <SelectValue placeholder={strings.currentCountry} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__empty_country__">{strings.currentCountry}</SelectItem>
-                      {countryOptions
-                        .filter((entry) => entry !== 'all')
-                        .map((entry) => (
-                          <SelectItem key={entry} value={entry}>
-                            <span className="inline-flex items-center gap-2">
-                              {(() => {
-                                const code = codeFromCountry(entry);
-                                return code ? <CountryFlag countryCode={code} svg style={{ width: '1rem', height: '1rem' }} /> : null;
-                              })()}
-                              <span>{entry}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  <div id="profile-country" className="flex h-12 items-center justify-between gap-3 rounded-md border-none bg-[#2d344c] px-3">
+                    <span className="inline-flex min-w-0 items-center gap-2 text-sm text-[#dce1ff]">
+                      {(() => {
+                        const code = codeFromCountry(shownCountry);
+                        return code ? <CountryFlag countryCode={code} svg style={{ width: '1rem', height: '1rem' }} /> : null;
+                      })()}
+                      <span className="truncate">{shownCountry}</span>
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 bg-[#181e36] px-2.5 text-xs text-[#dce1ff] hover:bg-[#222941]"
+                      onClick={() => void onUpdateLocation()}
+                      disabled={!isOwnProfile || locatingCountry}
+                    >
+                      <MapPin className="size-3.5" />
+                      {locatingCountry ? strings.updatingLocation : strings.updateLocation}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="profile-age" className="ml-1 text-[10px] font-bold tracking-[0.2em] uppercase text-[#9caec8]">
@@ -742,20 +815,20 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
             <TabsList variant="line" className="mb-4 h-auto w-full shrink-0 flex-row flex-wrap justify-start gap-4 border-b border-white/10 bg-transparent p-0">
               <TabsTrigger
                 value="friends"
-                className="h-auto flex-none rounded-none border-none px-0 pb-2 pt-1 text-[#9caec8] data-active:text-[#dce1ff]"
+                className="h-auto flex-none rounded-none border-none px-0 pb-2 pt-1 text-[#9caec8] hover:bg-transparent hover:text-[#dce1ff] data-active:text-[#dce1ff]"
               >
                 {strings.friendsTabFriends}
               </TabsTrigger>
               <TabsTrigger
                 value="incoming"
-                className="h-auto flex-none rounded-none border-none px-0 pb-2 pt-1 text-[#9caec8] data-active:text-[#dce1ff]"
+                className="h-auto flex-none rounded-none border-none px-0 pb-2 pt-1 text-[#9caec8] hover:bg-transparent hover:text-[#dce1ff] data-active:text-[#dce1ff]"
               >
                 {strings.friendsTabIncoming}
                 {incomingRequests.length > 0 ? <span className="ml-1 rounded-full bg-red-500 px-1.5 text-[10px] text-white">{incomingRequests.length}</span> : null}
               </TabsTrigger>
               <TabsTrigger
                 value="sent"
-                className="h-auto flex-none rounded-none border-none px-0 pb-2 pt-1 text-[#9caec8] data-active:text-[#dce1ff]"
+                className="h-auto flex-none rounded-none border-none px-0 pb-2 pt-1 text-[#9caec8] hover:bg-transparent hover:text-[#dce1ff] data-active:text-[#dce1ff]"
               >
                 {strings.friendsTabSent}
                 {outgoingRequests.length > 0 ? <span className="ml-1 rounded-full bg-red-500 px-1.5 text-[10px] text-white">{outgoingRequests.length}</span> : null}
@@ -1025,28 +1098,31 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
                     </SelectContent>
                   </Select>
 
-                  <Select
-                    value={row.level || '__empty_level__'}
-                    onValueChange={(value) => {
-                      const level = value === '__empty_level__' ? '' : value;
-                      updateDraftRow(row.id, { level });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={strings.chooseLevel} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__empty_level__">{strings.chooseLevel}</SelectItem>
-                      {(modalMode === 'known'
-                        ? [strings.levelNative, strings.levelFluent]
-                        : [strings.levelBeginner, strings.levelIntermediate, strings.levelAdvanced]
-                      ).map((level) => (
-                        <SelectItem key={level} value={level}>
-                          {level}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {modalMode === 'known' ? (
+                    <div className="flex h-10 items-center rounded-md border border-white/10 bg-[#0b1229]/35 px-3 text-sm text-[#9caec8]">
+                      {strings.levelNative}
+                    </div>
+                  ) : (
+                    <Select
+                      value={row.level || '__empty_level__'}
+                      onValueChange={(value) => {
+                        const level = value === '__empty_level__' ? '' : value;
+                        updateDraftRow(row.id, { level });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={strings.chooseLevel} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__empty_level__">{strings.chooseLevel}</SelectItem>
+                        {[strings.levelBeginner, strings.levelIntermediate, strings.levelAdvanced].map((level) => (
+                          <SelectItem key={level} value={level}>
+                            {level}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
 
                   <Button
                     variant="ghost"
@@ -1070,7 +1146,7 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
                     {
                       id: randomRowId(),
                       code: '',
-                      level: modalMode === 'known' ? strings.levelFluent : strings.levelBeginner,
+                      level: modalMode === 'known' ? strings.levelNative : strings.levelBeginner,
                     },
                   ])
                 }
