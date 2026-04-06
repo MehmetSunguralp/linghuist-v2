@@ -31,5 +31,6 @@ export const listUsersSelect = {
 } as const;
 
 export const profileByUsernameSelect = {
+  id: true,
   ...sharedDetailFields,
 } as const;

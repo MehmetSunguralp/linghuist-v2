@@ -2,6 +2,8 @@ export type ProfileClientProps = {
   readonly profileId: string;
 };
 
+export type ViewerProfileRelation = 'SELF' | 'FRIEND' | 'OUTGOING_PENDING' | 'INCOMING_PENDING' | 'NONE';
+
 export type MeUser = {
   id: string;
   email?: string;
@@ -15,6 +17,11 @@ export type MeUser = {
   age?: number | null;
   bio?: string | null;
   role?: 'USER' | 'ADMIN' | 'MODERATOR';
+  /** Set when loading another user by username (authenticated). */
+  viewerRelation?: ViewerProfileRelation;
+  isOnline?: boolean;
+  isTyping?: boolean;
+  isVerified?: boolean;
 };
 
 export type Envelope<T> = {

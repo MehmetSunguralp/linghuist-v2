@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -24,6 +25,7 @@ import { MeUserResponseEnvelopeDto } from './dto/me_user_response.dto';
 import { UpdateMeDto } from './dto/update_me.dto';
 import { listUsersSelect, meUserSelect, profileByUsernameSelect } from './user.selects';
 import type { GetAllUsersFilters, UploadedImageFile } from './types/user.types';
+import { UserFriendService } from './user-friend.service';
 import { getStoragePathFromUrl } from './utils/user-storage.utils';
 
 @Injectable()
@@ -33,6 +35,7 @@ export class UserProfileService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly supabaseService: SupabaseService,
+    private readonly userFriendService: UserFriendService,
   ) {}
 
   /** Returns the authenticated user's profile data. */
@@ -97,8 +100,8 @@ export class UserProfileService {
     };
   }
 
-  /** Returns a public profile by username. */
-  async getUserByUsername(username: string): Promise<GetUserByUsernameResponseEnvelopeDto> {
+  /** Returns a public profile by username for the authenticated viewer. */
+  async getUserByUsername(viewerId: string, username: string): Promise<GetUserByUsernameResponseEnvelopeDto> {
     const user = await this.prismaService.user.findUnique({
       where: { username },
       select: profileByUsernameSelect,
@@ -108,9 +111,15 @@ export class UserProfileService {
       throw new NotFoundException('User not found');
     }
 
+    if (await this.userFriendService.isBlockedBetweenUsers(viewerId, user.id)) {
+      throw new ForbiddenException('You cannot view this profile');
+    }
+
+    const viewerRelation = await this.userFriendService.getViewerRelation(viewerId, user.id);
+
     return {
       message: 'User retrieved successfully',
-      data: user,
+      data: { ...user, viewerRelation },
     };
   }
 

@@ -8,6 +8,7 @@ import {
 import { FriendRequestStatus } from '@prisma/client';
 import { PrismaService } from '@linghuist-v2/prisma';
 import type { ApiEnvelope } from '../../common/api-envelope.types';
+import type { ViewerProfileRelation } from './dto/get_user_by_username_response.dto';
 import { FriendRequestsListEnvelopeDto, FriendsListEnvelopeDto } from './dto/friend_requests_response.dto';
 import { UserNotificationService } from './user-notification.service';
 
@@ -53,7 +54,7 @@ export class UserFriendService {
     if (existingAccepted) {
       throw new ConflictException('You are already friends with this user');
     }
-    if (await this.isBlockedPair(senderId, receiverId)) {
+    if (await this.isBlockedBetweenUsers(senderId, receiverId)) {
       throw new ForbiddenException('Cannot send a friend request to this user');
     }
 
@@ -200,7 +201,7 @@ export class UserFriendService {
     };
   }
 
-  private async isBlockedPair(a: string, b: string): Promise<boolean> {
+  async isBlockedBetweenUsers(a: string, b: string): Promise<boolean> {
     const block = await this.prismaService.block.findFirst({
       where: {
         OR: [
@@ -211,5 +212,104 @@ export class UserFriendService {
       select: { id: true },
     });
     return Boolean(block);
+  }
+
+  async getViewerRelation(viewerId: string, profileUserId: string): Promise<ViewerProfileRelation> {
+    if (viewerId === profileUserId) {
+      return 'SELF';
+    }
+
+    const accepted = await this.prismaService.friendRequest.findFirst({
+      where: {
+        status: FriendRequestStatus.ACCEPTED,
+        OR: [
+          { senderId: viewerId, receiverId: profileUserId },
+          { senderId: profileUserId, receiverId: viewerId },
+        ],
+      },
+      select: { id: true },
+    });
+    if (accepted) {
+      return 'FRIEND';
+    }
+
+    const pendingOut = await this.prismaService.friendRequest.findFirst({
+      where: {
+        status: FriendRequestStatus.PENDING,
+        senderId: viewerId,
+        receiverId: profileUserId,
+      },
+      select: { id: true },
+    });
+    if (pendingOut) {
+      return 'OUTGOING_PENDING';
+    }
+
+    const pendingIn = await this.prismaService.friendRequest.findFirst({
+      where: {
+        status: FriendRequestStatus.PENDING,
+        senderId: profileUserId,
+        receiverId: viewerId,
+      },
+      select: { id: true },
+    });
+    if (pendingIn) {
+      return 'INCOMING_PENDING';
+    }
+
+    return 'NONE';
+  }
+
+  async removeFriend(userId: string, otherUserId: string): Promise<ApiEnvelope<null>> {
+    if (otherUserId === userId) {
+      throw new BadRequestException('Invalid user');
+    }
+    const row = await this.prismaService.friendRequest.findFirst({
+      where: {
+        status: FriendRequestStatus.ACCEPTED,
+        OR: [
+          { senderId: userId, receiverId: otherUserId },
+          { senderId: otherUserId, receiverId: userId },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!row) {
+      throw new NotFoundException('Friendship not found');
+    }
+    await this.prismaService.friendRequest.delete({ where: { id: row.id } });
+    return { message: 'Friend removed', data: null };
+  }
+
+  async blockUser(blockerId: string, blockedId: string): Promise<ApiEnvelope<null>> {
+    if (blockedId === blockerId) {
+      throw new BadRequestException('Cannot block yourself');
+    }
+    const target = await this.prismaService.user.findUnique({
+      where: { id: blockedId },
+      select: { id: true },
+    });
+    if (!target) {
+      throw new NotFoundException('User not found');
+    }
+    const existing = await this.prismaService.block.findFirst({
+      where: { blockerId, blockedId },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ConflictException('User is already blocked');
+    }
+    await this.prismaService.block.create({
+      data: { blockerId, blockedId },
+    });
+    await this.prismaService.friendRequest.deleteMany({
+      where: {
+        OR: [
+          { senderId: blockerId, receiverId: blockedId },
+          { senderId: blockedId, receiverId: blockerId },
+        ],
+      },
+    });
+    return { message: 'User blocked', data: null };
   }
 }

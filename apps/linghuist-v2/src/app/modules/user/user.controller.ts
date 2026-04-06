@@ -32,6 +32,8 @@ import { TranslateMessageDto } from './dto/translate_message.dto';
 import { ChatSuggestionDto } from './dto/chat_suggestion.dto';
 import { OpenDirectChatDto } from './dto/open_direct_chat.dto';
 import { EditMessageDto } from './dto/edit_message.dto';
+import { BlockUserDto } from './dto/block_user.dto';
+import { RemoveFriendDto } from './dto/remove_friend.dto';
 import { SendFriendRequestDto } from './dto/send_friend_request.dto';
 import { FriendRequestsListEnvelopeDto, FriendsListEnvelopeDto } from './dto/friend_requests_response.dto';
 import { CreatePostDto } from './dto/create_post.dto';
@@ -87,7 +89,7 @@ export class UserController {
         { name: 'avatar', maxCount: 1 },
       ],
       {
-      limits: { fileSize: AVATAR_UPLOAD_MAX_BYTES },
+        limits: { fileSize: AVATAR_UPLOAD_MAX_BYTES },
       },
     ),
   )
@@ -255,6 +257,18 @@ export class UserController {
   }
 
   @UseGuards(AuthGuard)
+  @Post('friends/remove')
+  removeFriend(@CurrentUserId() userId: string, @Body() body: RemoveFriendDto): Promise<ApiEnvelope<null>> {
+    return this.userService.removeFriend(userId, body.otherUserId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('friends/block')
+  blockUser(@CurrentUserId() userId: string, @Body() body: BlockUserDto): Promise<ApiEnvelope<null>> {
+    return this.userService.blockUser(userId, body.blockedUserId);
+  }
+
+  @UseGuards(AuthGuard)
   @Get('posts/feed')
   getFeed(@CurrentUserId() userId: string, @Query() query: FeedQueryDto) {
     return this.userService.getFeed(userId, query.page ?? 1, query.limit);
@@ -274,11 +288,7 @@ export class UserController {
 
   @UseGuards(AuthGuard)
   @Put('posts/:postId')
-  updatePost(
-    @CurrentUserId() userId: string,
-    @Param('postId') postId: string,
-    @Body() body: UpdatePostDto,
-  ) {
+  updatePost(@CurrentUserId() userId: string, @Param('postId') postId: string, @Body() body: UpdatePostDto) {
     return this.userService.updatePost(userId, postId, body);
   }
 
@@ -306,11 +316,7 @@ export class UserController {
 
   @UseGuards(AuthGuard)
   @Get('posts/:postId/comments')
-  listPostComments(
-    @CurrentUserId() userId: string,
-    @Param('postId') postId: string,
-    @Query() query: FeedQueryDto,
-  ) {
+  listPostComments(@CurrentUserId() userId: string, @Param('postId') postId: string, @Query() query: FeedQueryDto) {
     return this.userService.listPostComments(userId, postId, query.page ?? 1, query.limit);
   }
 
@@ -336,7 +342,10 @@ export class UserController {
 
   @UseGuards(AuthGuard)
   @Get(':username')
-  getUserByUsername(@Param('username') username: string): Promise<GetUserByUsernameResponseEnvelopeDto> {
-    return this.userService.getUserByUsername(username);
+  getUserByUsername(
+    @CurrentUserId() viewerId: string,
+    @Param('username') username: string,
+  ): Promise<GetUserByUsernameResponseEnvelopeDto> {
+    return this.userService.getUserByUsername(viewerId, username);
   }
 }

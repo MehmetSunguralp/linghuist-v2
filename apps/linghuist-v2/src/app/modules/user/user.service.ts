@@ -49,8 +49,8 @@ export class UserService {
   }
 
   /** Facade method for fetching a public profile by username. */
-  async getUserByUsername(username: string): Promise<GetUserByUsernameResponseEnvelopeDto> {
-    return this.userProfileService.getUserByUsername(username);
+  async getUserByUsername(viewerId: string, username: string): Promise<GetUserByUsernameResponseEnvelopeDto> {
+    return this.userProfileService.getUserByUsername(viewerId, username);
   }
 
   /** Facade method for updating editable fields on current user. */
@@ -104,11 +104,7 @@ export class UserService {
   }
 
   /** Facade method for manual message correction. */
-  async manuallyCorrectMessage(
-    userId: string,
-    messageId: string,
-    correctedText: string,
-  ) {
+  async manuallyCorrectMessage(userId: string, messageId: string, correctedText: string) {
     return this.userChatService.manuallyCorrectMessage(userId, messageId, correctedText);
   }
 
@@ -200,6 +196,14 @@ export class UserService {
     return this.userFriendService.rejectFriendRequest(userId, requestId);
   }
 
+  removeFriend(userId: string, otherUserId: string): Promise<ApiEnvelope<null>> {
+    return this.userFriendService.removeFriend(userId, otherUserId);
+  }
+
+  blockUser(userId: string, blockedUserId: string): Promise<ApiEnvelope<null>> {
+    return this.userFriendService.blockUser(userId, blockedUserId);
+  }
+
   getFeed(userId: string, page: number, limit?: number): Promise<GetFeedResponseEnvelopeDto> {
     return this.userSocialService.getFeed(userId, page, limit);
   }
@@ -228,7 +232,12 @@ export class UserService {
     return this.userSocialService.unlikePost(userId, postId);
   }
 
-  listPostComments(userId: string, postId: string, page: number, limit?: number): Promise<GetCommentsResponseEnvelopeDto> {
+  listPostComments(
+    userId: string,
+    postId: string,
+    page: number,
+    limit?: number,
+  ): Promise<GetCommentsResponseEnvelopeDto> {
     return this.userSocialService.listComments(userId, postId, page, limit);
   }
 
