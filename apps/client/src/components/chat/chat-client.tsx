@@ -98,7 +98,7 @@ export function ChatClient() {
   /** Always matches `selectedChatId` during render — avoids missing socket events before `useEffect` runs. */
   const selectedChatIdRef = React.useRef('');
   selectedChatIdRef.current = selectedChatId;
-  const typingTimeoutRef = React.useRef<number | null>(null);
+  const typingTimeoutRef = React.useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
   const messagesContainerRef = React.useRef<HTMLDivElement | null>(null);
   const footerRef = React.useRef<HTMLElement | null>(null);
   const lastSuggestionSendRef = React.useRef<{ chatId: string; content: string; translatedSuggestion: string } | null>(null);
