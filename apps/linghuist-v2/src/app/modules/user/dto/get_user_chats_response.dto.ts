@@ -3,6 +3,8 @@ export class UserChatItemDto {
   interlocutorId!: string | null;
   interlocutorName!: string;
   interlocutorUsername!: string | null;
+  interlocutorAvatarUrl!: string | null;
+  interlocutorCountry!: string | null;
   lastMessagePreview!: string | null;
   lastMessageAt!: Date | null;
   /** Unread messages from others in this chat (for list dots). */

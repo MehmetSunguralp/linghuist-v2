@@ -185,6 +185,7 @@ export const enStrings = {
     sentRequest: 'Request sent',
     requestReceived: 'Request received',
     removeFriend: 'Remove friend',
+    chatNow: 'Chat',
     blockUser: 'Block user',
     confirmRemoveFriendTitle: 'Remove friend?',
     confirmRemoveFriendBody: 'You will no longer be connected as friends.',

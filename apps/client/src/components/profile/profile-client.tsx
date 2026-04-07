@@ -727,6 +727,30 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
     }
   }
 
+  async function onStartChat() {
+    if (!accessToken || !profile?.id || viewerRelation !== 'FRIEND') return;
+    setSocialBusy(true);
+    try {
+      const res = await fetch('/api/user/chats/open', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ otherUserId: profile.id }),
+      });
+      const json = (await res.json()) as { message?: string; data?: { chatId?: string } };
+      if (!res.ok || !json?.data?.chatId) {
+        throw new Error(json?.message || strings.socialActionError);
+      }
+      router.push(`/chats?chatId=${encodeURIComponent(json.data.chatId)}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : strings.socialActionError);
+    } finally {
+      setSocialBusy(false);
+    }
+  }
+
   const profileName = profile?.name || profile?.username || strings.profileHeadingFallback;
   const username = profile?.username ? `@${profile.username}` : `@${profileId}`;
   const isAdmin = profile?.role === 'ADMIN';
@@ -1339,16 +1363,27 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
                   {accessToken && viewerRelation && viewerRelation !== 'SELF' ? (
                     <div className="flex flex-wrap justify-center gap-2 pt-2 md:justify-start">
                       {viewerRelation === 'FRIEND' ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-10 bg-[#2d344c] text-[#dce1ff] hover:bg-[#323851]"
-                          disabled={socialBusy}
-                          onClick={() => setRemoveFriendModalOpen(true)}
-                        >
-                          <UserMinus className="size-4" />
-                          {strings.removeFriend}
-                        </Button>
+                        <>
+                          <Button
+                            type="button"
+                            className="h-10 bg-[#00d4ff] font-semibold text-[#003642] hover:bg-[#00d4ff]/90"
+                            disabled={socialBusy}
+                            onClick={() => void onStartChat()}
+                          >
+                            <MessageCircle className="size-4" />
+                            {strings.chatNow}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="h-10 bg-[#2d344c] text-[#dce1ff] hover:bg-[#323851]"
+                            disabled={socialBusy}
+                            onClick={() => setRemoveFriendModalOpen(true)}
+                          >
+                            <UserMinus className="size-4" />
+                            {strings.removeFriend}
+                          </Button>
+                        </>
                       ) : null}
                       {viewerRelation === 'NONE' ? (
                         <Button
@@ -1477,10 +1512,10 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
           <Rss className="h-4 w-4" />
           <span className="text-[11px]">{communityStrings.navFeed}</span>
         </button>
-        <button type="button" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
+        <Link href="/chats" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
           <MessageCircle className="h-4 w-4" />
           <span className="text-[11px]">{communityStrings.navChats}</span>
-        </button>
+        </Link>
         <button type="button" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
           <Bell className="h-4 w-4" />
           <span className="text-[11px]">{communityStrings.navNotifications}</span>

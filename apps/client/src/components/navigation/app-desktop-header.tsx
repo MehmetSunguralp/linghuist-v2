@@ -38,10 +38,10 @@ export function AppDesktopHeader({ activeItem }: AppDesktopHeaderProps) {
             <Rss className="h-4 w-4" />
             {strings.navFeed}
           </button>
-          <button type="button" className={`inline-flex items-center gap-1 ${activeItem === 'chats' ? activeClass : inactiveClass}`}>
+          <Link href="/chats" className={`inline-flex items-center gap-1 ${activeItem === 'chats' ? activeClass : inactiveClass}`}>
             <MessageCircle className="h-4 w-4" />
             {strings.navChats}
-          </button>
+          </Link>
           <button type="button" className={`inline-flex items-center gap-1 ${inactiveClass}`}>
             <Bell className="h-4 w-4" />
             {strings.navNotifications}

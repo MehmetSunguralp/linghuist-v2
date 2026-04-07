@@ -271,10 +271,10 @@ export function CommunityClient() {
           <Rss className="h-4 w-4" />
           <span className="text-[11px]">{strings.navFeed}</span>
         </button>
-        <button type="button" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
+        <Link href="/chats" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
           <MessageCircle className="h-4 w-4" />
           <span className="text-[11px]">{strings.navChats}</span>
-        </button>
+        </Link>
         <button type="button" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
           <Bell className="h-4 w-4" />
           <span className="text-[11px]">{strings.navNotifications}</span>
