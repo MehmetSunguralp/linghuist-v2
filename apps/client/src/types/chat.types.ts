@@ -36,6 +36,8 @@ export type ChatMessagesEnvelope = {
   data: {
     chatId: string;
     messages: ChatMessage[];
+    hasMore?: boolean;
+    nextBefore?: string | null;
   };
 };
 

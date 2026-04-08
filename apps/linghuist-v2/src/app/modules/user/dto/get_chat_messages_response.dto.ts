@@ -16,6 +16,8 @@ export class ChatMessageItemDto {
 export class ChatMessagesDataDto {
   chatId!: string;
   messages!: ChatMessageItemDto[];
+  hasMore!: boolean;
+  nextBefore?: string | null;
 }
 
 export class GetChatMessagesResponseEnvelopeDto {

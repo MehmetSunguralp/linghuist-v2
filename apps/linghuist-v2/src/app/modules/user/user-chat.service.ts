@@ -544,13 +544,41 @@ export class UserChatService {
     };
   }
 
-  /** Returns full chronological message history for a chat participant. */
-  async getChatMessages(userId: string, chatId: string): Promise<GetChatMessagesResponseEnvelopeDto> {
+  /** Returns paginated message history for a chat participant (latest first page, older on demand). */
+  async getChatMessages(
+    userId: string,
+    chatId: string,
+    before?: string,
+    takeRaw?: string,
+  ): Promise<GetChatMessagesResponseEnvelopeDto> {
     await this.assertChatRoomAccess(userId, chatId);
+    const parsedTake = Number(takeRaw);
+    const take = Number.isFinite(parsedTake) && parsedTake > 0 ? Math.min(Math.floor(parsedTake), 100) : 40;
+    const [beforeTsRaw, beforeIdRaw] = (before || '').split('::');
+    const beforeDate = beforeTsRaw ? new Date(beforeTsRaw) : null;
+    const beforeId = beforeIdRaw?.trim() || '';
+    const hasBefore = Boolean(beforeDate && !Number.isNaN(beforeDate.getTime()));
 
     const messages = await this.prismaService.message.findMany({
-      where: { chatId },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      where: {
+        chatId,
+        ...(hasBefore
+          ? {
+              OR: [
+                { createdAt: { lt: beforeDate as Date } },
+                ...(beforeId
+                  ? [
+                      {
+                        AND: [{ createdAt: beforeDate as Date }, { id: { lt: beforeId } }],
+                      },
+                    ]
+                  : []),
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: take + 1,
       select: {
         id: true,
         chatId: true,
@@ -571,12 +599,18 @@ export class UserChatService {
         },
       },
     });
+    const hasMore = messages.length > take;
+    const slice = hasMore ? messages.slice(0, take) : messages;
+    const ordered = [...slice].reverse();
+    const oldest = ordered[0] ?? null;
 
     return {
       message: 'Messages retrieved successfully',
       data: {
         chatId,
-        messages: messages.map((message) => ({
+        hasMore,
+        nextBefore: oldest ? `${oldest.createdAt.toISOString()}::${oldest.id}` : null,
+        messages: ordered.map((message) => ({
           id: message.id,
           chatId: message.chatId,
           senderId: message.senderId,

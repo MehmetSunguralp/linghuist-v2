@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import {
+  ChevronLeft,
+  Bell,
   Check,
   CheckCheck,
   Ban,
@@ -12,16 +14,22 @@ import {
   MoreHorizontal,
   MoreVertical,
   Pencil,
+  Rss,
   Search,
   SendHorizontal,
   Trash2,
+  Users,
 } from 'lucide-react';
+import Link from 'next/link';
 import { io, type Socket } from 'socket.io-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import CountryFlag from 'react-country-flag';
 
+import { CommunityProfileAvatar } from '@/components/community/community-profile-avatar';
 import { codeFromCountry } from '@/components/community/utils';
+import { enStrings } from '@/config/en.strings';
+import { useChatUnreadCount } from '@/lib/use-chat-unread-count';
 import { imageSrcAfterSigning, resolveSignedStorageUrl } from '@/lib/storage-url';
 import { useAuthStore } from '@/stores/auth-store';
 import type {
@@ -82,6 +90,7 @@ export function ChatClient() {
   const [draft, setDraft] = React.useState('');
   const [sending, setSending] = React.useState(false);
   const [typingByUserId, setTypingByUserId] = React.useState<Record<string, string>>({});
+  const [presenceTypingByUserId, setPresenceTypingByUserId] = React.useState<Record<string, boolean>>({});
   const [presenceByUserId, setPresenceByUserId] = React.useState<Record<string, boolean>>({});
   const [nativeLanguage, setNativeLanguage] = React.useState('en');
   const [suggestion, setSuggestion] = React.useState<{ suggestion: string; translatedSuggestion: string } | null>(null);
@@ -93,6 +102,8 @@ export function ChatClient() {
   const [editModal, setEditModal] = React.useState<{ messageId: string; value: string } | null>(null);
   const [correctModal, setCorrectModal] = React.useState<{ messageId: string; value: string } | null>(null);
   const [hiddenChatIds, setHiddenChatIds] = React.useState<string[]>([]);
+  const [isDesktop, setIsDesktop] = React.useState(false);
+  const unreadCount = useChatUnreadCount();
 
   const socketRef = React.useRef<Socket | null>(null);
   /** Always matches `selectedChatId` during render — avoids missing socket events before `useEffect` runs. */
@@ -102,6 +113,12 @@ export function ChatClient() {
   const messagesContainerRef = React.useRef<HTMLDivElement | null>(null);
   const footerRef = React.useRef<HTMLElement | null>(null);
   const lastSuggestionSendRef = React.useRef<{ chatId: string; content: string; translatedSuggestion: string } | null>(null);
+  const [hasMoreMessages, setHasMoreMessages] = React.useState(false);
+  const [oldestCursor, setOldestCursor] = React.useState<string | null>(null);
+  const [loadingOlderMessages, setLoadingOlderMessages] = React.useState(false);
+  const [socketConnected, setSocketConnected] = React.useState(false);
+  const preserveScrollRef = React.useRef<{ prevHeight: number; prevTop: number } | null>(null);
+  const autoScrollToBottomRef = React.useRef(true);
 
   const selectedChat = React.useMemo(
     () => chats.find((item) => item.chatId === selectedChatId) ?? null,
@@ -109,12 +126,18 @@ export function ChatClient() {
   );
   const filteredChats = React.useMemo(() => {
     const q = chatQuery.trim().toLowerCase();
-    if (!q) return chats;
-    return chats.filter((chat) => {
+    const baseChats = !q
+      ? chats
+      : chats.filter((chat) => {
       const name = (chat.interlocutorName || '').toLowerCase();
       const user = (chat.interlocutorUsername || '').toLowerCase();
       const preview = (chat.lastMessagePreview || '').toLowerCase();
       return name.includes(q) || user.includes(q) || preview.includes(q);
+      });
+    return [...baseChats].sort((a, b) => {
+      const aTs = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const bTs = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return bTs - aTs;
     });
   }, [chatQuery, chats]);
   const selectedChatAvatar = selectedChat?.interlocutorId ? avatarMap[selectedChat.interlocutorId] || '' : '';
@@ -138,7 +161,14 @@ export function ChatClient() {
       setChats(visibleChats);
       setSelectedChatId((prev) => {
         if (prev && visibleChats.some((c) => c.chatId === prev)) return prev;
-        return visibleChats[0]?.chatId ?? '';
+        if (!isDesktop) return '';
+        return visibleChats
+          .slice()
+          .sort((a, b) => {
+            const aTs = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+            const bTs = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+            return bTs - aTs;
+          })[0]?.chatId ?? '';
       });
     } catch (error) {
       if (!silent) {
@@ -147,15 +177,39 @@ export function ChatClient() {
     } finally {
       if (!silent) setLoadingChats(false);
     }
-  }, [accessToken, hiddenChatIds]);
+  }, [accessToken, hiddenChatIds, isDesktop]);
+
+  React.useEffect(() => {
+    const media = globalThis.matchMedia('(min-width: 768px)');
+    const onChange = () => setIsDesktop(media.matches);
+    onChange();
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  React.useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    const prevHeight = document.body.style.height;
+    document.body.style.overflow = 'hidden';
+    document.body.style.height = '100dvh';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.height = prevHeight;
+    };
+  }, []);
 
   const loadMessages = React.useCallback(
-    async (chatId: string, options?: { silent?: boolean }) => {
+    async (chatId: string, options?: { silent?: boolean; before?: string; appendOlder?: boolean }) => {
       if (!accessToken || !chatId) return;
       const silent = options?.silent === true;
+      const before = options?.before?.trim() || '';
+      const appendOlder = options?.appendOlder === true;
       if (!silent) setLoadingMessages(true);
       try {
-        const res = await fetch(`/api/user/chats/${encodeURIComponent(chatId)}/messages`, {
+        const query = new URLSearchParams();
+        query.set('take', '40');
+        if (before) query.set('before', before);
+        const res = await fetch(`/api/user/chats/${encodeURIComponent(chatId)}/messages?${query.toString()}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
           cache: 'no-store',
         });
@@ -167,7 +221,14 @@ export function ChatClient() {
           ...msg,
           __aiSuggested: msg.senderId === myUserId && !msg.editedContent && Boolean(msg.translatedText || msg.aiSuggestion),
         }));
-        setMessages(mapped);
+        if (appendOlder) {
+          setMessages((prev) => [...mapped, ...prev]);
+        } else {
+          setMessages(mapped);
+        }
+        setHasMoreMessages(Boolean(json?.data?.hasMore));
+        setOldestCursor(json?.data?.nextBefore ?? null);
+        autoScrollToBottomRef.current = !appendOlder;
         socketRef.current?.emit(USER_SOCKET_EVENTS.CHAT_READ, { chatId });
       } catch (error) {
         if (!silent) {
@@ -226,6 +287,8 @@ export function ChatClient() {
   React.useEffect(() => {
     if (!selectedChatId) {
       setMessages([]);
+      setHasMoreMessages(false);
+      setOldestCursor(null);
       return;
     }
     void loadMessages(selectedChatId);
@@ -266,18 +329,22 @@ export function ChatClient() {
       : globalThis.location.origin;
     const base = (process.env.NEXT_PUBLIC_SERVER_URL?.trim() || fallbackBase).replace(/\/$/, '');
     const socket = io(`${base}/api/user`, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       auth: { token: accessToken },
       extraHeaders: { Authorization: `Bearer ${accessToken}` },
     });
     socketRef.current = socket;
+    setSocketConnected(socket.connected);
 
     socket.on('connect', () => {
+      setSocketConnected(true);
       const cid = selectedChatIdRef.current;
       if (!cid) return;
       socket.emit(USER_SOCKET_EVENTS.CHAT_JOIN, { chatId: cid });
       socket.emit(USER_SOCKET_EVENTS.CHAT_READ, { chatId: cid });
     });
+    socket.on('disconnect', () => setSocketConnected(false));
+    socket.on('connect_error', () => setSocketConnected(false));
 
     socket.on(USER_SOCKET_EVENTS.CHAT_MESSAGE, (incoming: ChatMessage) => {
       if (!incoming?.chatId) return;
@@ -361,9 +428,11 @@ export function ChatClient() {
     socket.on(USER_SOCKET_EVENTS.PRESENCE_UPDATED, (payload: PresencePayload) => {
       if (!payload?.userId) return;
       setPresenceByUserId((prev) => ({ ...prev, [payload.userId]: Boolean(payload.isOnline) }));
+      setPresenceTypingByUserId((prev) => ({ ...prev, [payload.userId]: Boolean(payload.isTyping) }));
     });
 
     return () => {
+      setSocketConnected(false);
       socket.disconnect();
       socketRef.current = null;
     };
@@ -381,14 +450,82 @@ export function ChatClient() {
   }, [selectedChatId]);
 
   const remoteTyping = React.useMemo(() => {
-    return Object.keys(typingByUserId).some((userId) => userId !== myUserId && typingByUserId[userId] === selectedChatId);
-  }, [typingByUserId, myUserId, selectedChatId]);
+    const socketTyping = Object.keys(typingByUserId).some((userId) => userId !== myUserId && typingByUserId[userId] === selectedChatId);
+    if (socketTyping) return true;
+    const interlocutorId = selectedChat?.interlocutorId || '';
+    if (!interlocutorId) return false;
+    return Boolean(presenceTypingByUserId[interlocutorId]);
+  }, [typingByUserId, myUserId, selectedChatId, selectedChat, presenceTypingByUserId]);
   const interlocutorOnline = selectedChat?.interlocutorId ? Boolean(presenceByUserId[selectedChat.interlocutorId]) : false;
   React.useEffect(() => {
     if (!messagesContainerRef.current || !selectedChatId) return;
     const el = messagesContainerRef.current;
+    const preserve = preserveScrollRef.current;
+    if (preserve) {
+      const delta = el.scrollHeight - preserve.prevHeight;
+      el.scrollTop = preserve.prevTop + delta;
+      preserveScrollRef.current = null;
+      return;
+    }
+    if (!autoScrollToBottomRef.current) return;
     el.scrollTop = el.scrollHeight;
   }, [messages, selectedChatId, suggestion]);
+
+  async function loadOlderMessages() {
+    if (!selectedChatId || !oldestCursor || loadingOlderMessages || !hasMoreMessages) return;
+    const listEl = messagesContainerRef.current;
+    if (!listEl) return;
+    preserveScrollRef.current = { prevHeight: listEl.scrollHeight, prevTop: listEl.scrollTop };
+    setLoadingOlderMessages(true);
+    try {
+      await loadMessages(selectedChatId, { silent: true, before: oldestCursor, appendOlder: true });
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  }
+
+  function onMessagesScroll(event: React.UIEvent<HTMLDivElement>) {
+    const el = event.currentTarget;
+    if (el.scrollTop <= 56) {
+      void loadOlderMessages();
+    }
+  }
+
+  React.useEffect(() => {
+    if (loadingOlderMessages || !hasMoreMessages) return;
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    if (el.scrollTop <= 56) {
+      void loadOlderMessages();
+    }
+  }, [loadingOlderMessages, hasMoreMessages, messages.length]);
+
+  React.useEffect(() => {
+    if (!selectedChatId || socketConnected) return;
+    const id = globalThis.setInterval(() => {
+      void loadMessages(selectedChatId, { silent: true });
+      void loadChatsRef.current({ silent: true });
+    }, 3000);
+    return () => globalThis.clearInterval(id);
+  }, [selectedChatId, socketConnected, loadMessages]);
+
+  React.useEffect(() => {
+    if (isDesktop) return;
+    const vv = globalThis.visualViewport;
+    if (!vv) return;
+    const apply = () => {
+      const offset = Math.max(0, globalThis.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty('--chat-vv-offset', `${offset}px`);
+    };
+    apply();
+    vv.addEventListener('resize', apply);
+    vv.addEventListener('scroll', apply);
+    return () => {
+      vv.removeEventListener('resize', apply);
+      vv.removeEventListener('scroll', apply);
+      document.documentElement.style.setProperty('--chat-vv-offset', '0px');
+    };
+  }, [isDesktop]);
 
   React.useEffect(() => {
     if (!openBubbleMenuId) return;
@@ -404,7 +541,7 @@ export function ChatClient() {
   }, [openBubbleMenuId]);
 
   async function sendContent(content: string) {
-    if (!content || !selectedChatId || !socketRef.current || sending) return;
+    if (!content || !selectedChatId || sending) return;
     const suggestionHint = lastSuggestionSendRef.current;
     const includeSuggestionTranslation =
       Boolean(suggestionHint) &&
@@ -428,10 +565,28 @@ export function ChatClient() {
     setMessages((prev) => [...prev, optimisticMessage]);
     setSending(true);
     try {
-      socketRef.current.emit(USER_SOCKET_EVENTS.CHAT_MESSAGE, { chatId: selectedChatId, content });
+      if (socketConnected && socketRef.current?.connected) {
+        socketRef.current.emit(USER_SOCKET_EVENTS.CHAT_MESSAGE, { chatId: selectedChatId, content });
+      } else if (accessToken) {
+        const res = await fetch(`/api/user/chats/${encodeURIComponent(selectedChatId)}/messages`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ content }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { message?: string; data?: { message?: ChatMessage } };
+        if (!res.ok) throw new Error(json?.message || 'Failed to send message');
+        const created = json?.data?.message;
+        if (created?.id) {
+          setMessages((prev) => prev.map((m) => (m.id === optimisticMessage.id ? { ...m, ...created, __pending: false } : m)));
+          void loadChatsRef.current({ silent: true });
+        }
+      }
       setDraft('');
       setSuggestion(null);
-      socketRef.current.emit(USER_SOCKET_EVENTS.CHAT_TYPING, { chatId: selectedChatId, isTyping: false });
+      socketRef.current?.emit(USER_SOCKET_EVENTS.CHAT_TYPING, { chatId: selectedChatId, isTyping: false });
       if (includeSuggestionTranslation) {
         lastSuggestionSendRef.current = null;
       }
@@ -626,8 +781,16 @@ export function ChatClient() {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
   return (
-    <div className="mx-auto flex h-[calc(100dvh-4rem)] w-full max-w-6xl gap-4 bg-[#0b1229] px-4 py-4 text-[#dce1ff] md:px-6 md:py-6">
-      <aside className="hidden w-80 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#111834] md:flex md:flex-col">
+    <div
+      className="fixed inset-x-0 bottom-0 mx-auto flex w-full max-w-6xl gap-4 bg-[#0b1229] px-0 py-0 text-[#dce1ff] md:static md:h-[calc(100dvh-4rem)] md:px-6 md:py-6"
+      style={{
+        height: isDesktop ? undefined : 'calc(100dvh - max(1.5rem, env(safe-area-inset-top)))',
+        paddingTop: isDesktop ? undefined : 'max(1.5rem, env(safe-area-inset-top))',
+      }}
+    >
+      <aside
+        className={`${selectedChatId ? 'hidden md:flex' : 'flex'} w-full flex-col overflow-hidden border border-white/10 bg-[#111834] md:w-80 md:shrink-0 md:rounded-2xl`}
+      >
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
           <h2 className="text-sm font-bold tracking-[0.16em] text-[#95a7c4] uppercase">Chats</h2>
         </div>
@@ -642,7 +805,7 @@ export function ChatClient() {
             />
           </div>
         </div>
-        <div className="chat-scrollbar flex-1 overflow-y-auto p-2">
+        <div className="chat-scrollbar flex-1 overflow-y-auto p-2 pb-20 md:pb-2">
           {loadingChats ? <p className="px-3 py-3 text-sm text-[#95a7c4]">Loading chats...</p> : null}
           {!loadingChats && filteredChats.length === 0 ? <p className="px-3 py-3 text-sm text-[#95a7c4]">No chats found.</p> : null}
           {filteredChats.map((chat) => {
@@ -712,18 +875,32 @@ export function ChatClient() {
         </div>
       </aside>
 
-      <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111834]">
+      <section
+        className={`${selectedChatId ? 'flex' : 'hidden md:flex'} relative min-w-0 flex-1 flex-col overflow-hidden border border-white/10 bg-[#111834] md:rounded-2xl`}
+      >
         <header className="relative z-20 flex items-center justify-between border-b border-white/10 px-4 py-4">
-          <button
-            type="button"
-            className="flex min-w-0 items-center gap-3 text-left"
-            onClick={() => {
-              if (!selectedChat) return;
-              const idOrUsername = selectedChat.interlocutorUsername || selectedChat.interlocutorId;
-              if (!idOrUsername) return;
-              router.push(`/profile/${encodeURIComponent(idOrUsername)}`);
-            }}
-          >
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex size-8 items-center justify-center rounded-md text-[#95a7c4] hover:bg-[#1e2443] md:hidden"
+              onClick={() => {
+                setSelectedChatId('');
+                router.replace('/chats');
+              }}
+              aria-label="Back to chats"
+            >
+              <ChevronLeft className="size-5" />
+            </button>
+            <button
+              type="button"
+              className="flex min-w-0 items-center gap-3 text-left"
+              onClick={() => {
+                if (!selectedChat) return;
+                const idOrUsername = selectedChat.interlocutorUsername || selectedChat.interlocutorId;
+                if (!idOrUsername) return;
+                router.push(`/profile/${encodeURIComponent(idOrUsername)}`);
+              }}
+            >
             <span className="relative inline-flex size-10 shrink-0">
               {selectedChatAvatar ? (
                 <img
@@ -754,7 +931,8 @@ export function ChatClient() {
                 {remoteTyping ? <span className="font-medium text-emerald-400">Typing…</span> : selectedChat ? '' : 'Select a dialogue to begin'}
               </p>
             </span>
-          </button>
+            </button>
+          </div>
           <div className="relative">
             <button
               type="button"
@@ -791,25 +969,13 @@ export function ChatClient() {
                   <Ban className="size-3.5" />
                   Block user
                 </button>
-                <button
-                  type="button"
-                  className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-[#202a4d]"
-                  onClick={() => {
-                    setHeaderMenuOpen(false);
-                    const idOrUsername = selectedChat.interlocutorUsername || selectedChat.interlocutorId;
-                    if (!idOrUsername) return;
-                    router.push(`/profile/${encodeURIComponent(idOrUsername)}`);
-                  }}
-                >
-                  <Pencil className="size-3.5" />
-                  View profile
-                </button>
               </div>
             ) : null}
           </div>
         </header>
 
-        <div ref={messagesContainerRef} className="chat-scrollbar relative z-0 flex-1 overflow-y-auto px-4 py-5">
+        <div ref={messagesContainerRef} onScroll={onMessagesScroll} className="chat-scrollbar relative z-0 flex-1 overflow-y-auto px-4 py-5">
+          {loadingOlderMessages ? <p className="mb-2 text-center text-xs text-[#95a7c4]">Loading older messages...</p> : null}
           {!selectedChat ? (
             <div className="flex h-full flex-col items-center justify-center text-center text-[#95a7c4]">
               <MessageCircle className="mb-3 size-8 text-[#00d4ff]" />
@@ -918,7 +1084,13 @@ export function ChatClient() {
           })}
         </div>
 
-        <footer ref={footerRef} className="relative z-20 border-t border-white/10 px-4 py-3">
+        <footer
+          ref={footerRef}
+          className="relative z-20 border-t border-white/10 px-4 py-3"
+          style={{
+            transform: isDesktop ? undefined : 'translateY(calc(var(--chat-vv-offset, 0px) * -1))',
+          }}
+        >
           {suggestion ? (
             <div className="mb-2 rounded-lg border border-white/15 bg-[#1a203c] p-2 text-xs">
               <p>
@@ -998,6 +1170,37 @@ export function ChatClient() {
           </div>
         </footer>
       </section>
+      {!selectedChatId ? (
+        <nav className="fixed right-0 bottom-0 left-0 z-40 flex w-full items-center justify-around border-t border-white/10 bg-[#0b1229]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
+          <Link href="/community" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
+            <Users className="h-4 w-4" />
+            <span className="text-[11px] font-semibold">{enStrings.community.navCommunity}</span>
+          </Link>
+          <button type="button" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
+            <Rss className="h-4 w-4" />
+            <span className="text-[11px]">{enStrings.community.navFeed}</span>
+          </button>
+          <Link href="/chats" className="flex flex-col items-center gap-1 text-[#00d4ff]">
+            <span className="relative inline-flex">
+              <MessageCircle className="h-4 w-4" />
+              {unreadCount > 0 ? (
+                <span className="absolute -top-1.5 -right-2 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-4 text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              ) : null}
+            </span>
+            <span className="text-[11px]">{enStrings.community.navChats}</span>
+          </Link>
+          <button type="button" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
+            <Bell className="h-4 w-4" />
+            <span className="text-[11px]">{enStrings.community.navNotifications}</span>
+          </button>
+          <Link href="/profile/me" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
+            <CommunityProfileAvatar className="size-6" fallbackClassName="text-[9px]" />
+            <span className="text-[11px]">{enStrings.community.navProfile}</span>
+          </Link>
+        </nav>
+      ) : null}
       {editModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#141a32] p-5">

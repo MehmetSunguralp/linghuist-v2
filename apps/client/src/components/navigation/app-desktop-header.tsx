@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { CommunityHeaderUserMenu } from '@/components/community/community-header-user-menu';
 import { enStrings } from '@/config/en.strings';
+import { useChatUnreadCount } from '@/lib/use-chat-unread-count';
 
 type HeaderItem = 'community' | 'feed' | 'chats';
 
@@ -17,6 +18,7 @@ const strings = enStrings.community;
 export function AppDesktopHeader({ activeItem }: AppDesktopHeaderProps) {
   const activeClass = 'text-[#00d4ff]';
   const inactiveClass = 'text-[#8ea0ba] transition-colors hover:text-white';
+  const unreadCount = useChatUnreadCount();
 
   return (
     <header className="fixed top-0 left-0 z-50 hidden w-full border-b border-white/5 bg-[#0b1229]/90 backdrop-blur md:block">
@@ -39,7 +41,14 @@ export function AppDesktopHeader({ activeItem }: AppDesktopHeaderProps) {
             {strings.navFeed}
           </button>
           <Link href="/chats" className={`inline-flex items-center gap-1 ${activeItem === 'chats' ? activeClass : inactiveClass}`}>
-            <MessageCircle className="h-4 w-4" />
+            <span className="relative inline-flex">
+              <MessageCircle className="h-4 w-4" />
+              {unreadCount > 0 ? (
+                <span className="absolute -top-1.5 -right-2 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-4 text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              ) : null}
+            </span>
             {strings.navChats}
           </Link>
           <button type="button" className={`inline-flex items-center gap-1 ${inactiveClass}`}>

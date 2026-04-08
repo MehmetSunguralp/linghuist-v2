@@ -513,6 +513,12 @@ summary svg {
   }
 }
 
+@media (max-width: 767px) {
+  #nprogress {
+    display: none !important;
+  }
+}
+
 @layer base {
   .theme {
     --font-heading: var(--font-sans);

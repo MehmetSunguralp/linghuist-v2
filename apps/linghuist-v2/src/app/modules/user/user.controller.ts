@@ -32,6 +32,7 @@ import { TranslateMessageDto } from './dto/translate_message.dto';
 import { ChatSuggestionDto } from './dto/chat_suggestion.dto';
 import { OpenDirectChatDto } from './dto/open_direct_chat.dto';
 import { EditMessageDto } from './dto/edit_message.dto';
+import { CreateChatMessageDto } from './dto/create_chat_message.dto';
 import { BlockUserDto } from './dto/block_user.dto';
 import { RemoveFriendDto } from './dto/remove_friend.dto';
 import { SendFriendRequestDto } from './dto/send_friend_request.dto';
@@ -155,8 +156,24 @@ export class UserController {
   getChatMessages(
     @CurrentUserId() userId: string,
     @Param('chatId') chatId: string,
+    @Query('before') before?: string,
+    @Query('take') take?: string,
   ): Promise<GetChatMessagesResponseEnvelopeDto> {
-    return this.userService.getChatMessages(userId, chatId);
+    return this.userService.getChatMessages(userId, chatId, before, take);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('chats/:chatId/messages')
+  async createChatMessage(
+    @CurrentUserId() userId: string,
+    @Param('chatId') chatId: string,
+    @Body() body: CreateChatMessageDto,
+  ): Promise<ApiEnvelope<{ chatId: string; message: unknown }>> {
+    const message = await this.userService.createChatMessage(userId, chatId, body.content);
+    return {
+      message: 'Message sent successfully',
+      data: { chatId, message },
+    };
   }
 
   @UseGuards(AuthGuard)

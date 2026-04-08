@@ -143,9 +143,14 @@ export class UserService {
     return this.userChatService.ensureDirectChatWithUser(userId, otherUserId);
   }
 
-  /** Facade method for loading message history of a chat. */
-  async getChatMessages(userId: string, chatId: string): Promise<GetChatMessagesResponseEnvelopeDto> {
-    return this.userChatService.getChatMessages(userId, chatId);
+  /** Facade method for loading paginated message history of a chat. */
+  async getChatMessages(
+    userId: string,
+    chatId: string,
+    before?: string,
+    take?: string,
+  ): Promise<GetChatMessagesResponseEnvelopeDto> {
+    return this.userChatService.getChatMessages(userId, chatId, before, take);
   }
 
   /** Facade method for paginated notifications query. */

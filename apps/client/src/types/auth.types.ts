@@ -25,3 +25,8 @@ export type LoginSessionData = {
   access_token: string;
   refresh_token: string;
 };
+
+export type ConfirmEmailPayload = {
+  accessToken: string;
+  refreshToken?: string;
+};

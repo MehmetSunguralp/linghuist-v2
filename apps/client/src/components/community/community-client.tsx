@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { CommunityProfileAvatar } from '@/components/community/community-profile-avatar';
 import { Spinner } from '@/components/ui/spinner';
 import { enStrings } from '@/config/en.strings';
+import { useChatUnreadCount } from '@/lib/use-chat-unread-count';
 import { useAuthStore } from '@/stores/auth-store';
 
 import { CommunityAgeRangeControl, CommunityFiltersForm } from './filters';
@@ -45,6 +46,7 @@ function hasAnyFilter(filters: CommunityFilters): boolean {
 
 export function CommunityClient() {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const unreadCount = useChatUnreadCount();
 
   const [filters, setFilters] = React.useState<CommunityFilters>(() => defaultCommunityFilters());
   const [draftFilters, setDraftFilters] = React.useState<CommunityFilters>(() => defaultCommunityFilters());
@@ -183,7 +185,7 @@ export function CommunityClient() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[#0b1229] text-[#dce1ff]">
-      <div className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0b1229]/95 px-3 py-2 backdrop-blur md:hidden">
+      <div className="sticky top-0 z-40 w-full border-b border-white/5 bg-[#0b1229]/95 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
         <button
           type="button"
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#181e36] py-3 text-sm font-semibold"
@@ -262,7 +264,7 @@ export function CommunityClient() {
         </section>
       </main>
 
-      <nav className="fixed bottom-0 left-0 z-40 flex w-full items-center justify-around border-t border-white/10 bg-[#0b1229]/95 px-2 py-2 backdrop-blur md:hidden">
+      <nav className="fixed bottom-0 left-0 z-40 flex w-full items-center justify-around border-t border-white/10 bg-[#0b1229]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
         <Link href="/community" className="flex flex-col items-center gap-1 text-[#00d4ff]">
           <Users className="h-4 w-4" />
           <span className="text-[11px] font-semibold">{strings.navCommunity}</span>
@@ -272,7 +274,14 @@ export function CommunityClient() {
           <span className="text-[11px]">{strings.navFeed}</span>
         </button>
         <Link href="/chats" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
-          <MessageCircle className="h-4 w-4" />
+          <span className="relative inline-flex">
+            <MessageCircle className="h-4 w-4" />
+            {unreadCount > 0 ? (
+              <span className="absolute -top-1.5 -right-2 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-4 text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            ) : null}
+          </span>
           <span className="text-[11px]">{strings.navChats}</span>
         </Link>
         <button type="button" className="flex flex-col items-center gap-1 text-[#8ea0ba]">

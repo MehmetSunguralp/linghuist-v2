@@ -1,4 +1,4 @@
-import type { ApiEnvelope, LoginSessionData } from '@/types/auth.types';
+import type { ApiEnvelope, ConfirmEmailPayload, LoginSessionData } from '@/types/auth.types';
 
 type AuthApiPath = 'login' | 'signup';
 
@@ -34,6 +34,16 @@ export async function postRequestPasswordReset(body: {
   email: string;
 }): Promise<{ ok: boolean; status: number; json: unknown }> {
   const res = await fetch('/api/auth/request-password-reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const json: unknown = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, json };
+}
+
+export async function postConfirmEmail(body: ConfirmEmailPayload): Promise<{ ok: boolean; status: number; json: unknown }> {
+  const res = await fetch('/api/auth/confirm-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

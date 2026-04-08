@@ -5,6 +5,7 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { RequestPasswordResetDto } from './dto/request_password_reset.dto';
 import { UpdatePasswordDto } from './dto/update_password.dto';
+import { ConfirmEmailDto } from './dto/confirm_email.dto';
 
 /** Public auth routes; responses follow `{ message, data }` (data may be null). */
 @Controller('auth')
@@ -29,5 +30,10 @@ export class AuthController {
   @Post('update-password')
   updatePassword(@Body() dto: UpdatePasswordDto): Promise<ApiEnvelope<null>> {
     return this.authService.updatePassword(dto);
+  }
+
+  @Post('confirm-email')
+  confirmEmail(@Body() dto: ConfirmEmailDto): Promise<ApiEnvelope<LoginSessionData>> {
+    return this.authService.confirmEmail(dto);
   }
 }

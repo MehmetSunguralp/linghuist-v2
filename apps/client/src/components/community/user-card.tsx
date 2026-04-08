@@ -37,18 +37,18 @@ function LanguageFlagBadge({ label }: { readonly label?: string }) {
 
 export function CommunityUserCard({ user }: { readonly user: DiscoveryUser }) {
   const accessToken = useAuthStore((s) => s.accessToken);
-  const [avatar, setAvatar] = React.useState('/logo_small.webp');
+  const [avatar, setAvatar] = React.useState('');
   React.useEffect(() => {
     let active = true;
     async function resolveAvatar() {
       const rawPath = user.thumbnailUrl ?? user.avatarUrl ?? '';
       if (!rawPath) {
-        if (active) setAvatar('/logo_small.webp');
+        if (active) setAvatar('');
         return;
       }
       const signed = await resolveSignedStorageUrl(rawPath, accessToken);
       if (!active) return;
-      setAvatar(imageSrcAfterSigning(signed, rawPath) || '/logo_small.webp');
+      setAvatar(imageSrcAfterSigning(signed, rawPath) || '');
     }
     void resolveAvatar();
     return () => {
@@ -72,7 +72,13 @@ export function CommunityUserCard({ user }: { readonly user: DiscoveryUser }) {
               user.isOnline ? 'ring-emerald-500' : 'ring-zinc-500'
             }`}
           >
-            <img src={avatar} alt={user.name ?? user.username ?? 'User'} className="h-full w-full object-cover" />
+            {avatar ? (
+              <img src={avatar} alt={user.name ?? user.username ?? 'User'} className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center bg-[#2a3150] text-lg font-semibold text-[#9caec8]">
+                {(user.name ?? user.username ?? '?').charAt(0).toUpperCase()}
+              </span>
+            )}
           </div>
           {nationalityCode ? (
             <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center overflow-hidden rounded-full border border-[#181e36] bg-[#181e36] shadow-sm">

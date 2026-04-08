@@ -6,6 +6,7 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { RequestPasswordResetDto } from './dto/request_password_reset.dto';
 import { UpdatePasswordDto } from './dto/update_password.dto';
+import { ConfirmEmailDto } from './dto/confirm_email.dto';
 
 @Injectable()
 export class AuthService {
@@ -158,6 +159,73 @@ export class AuthService {
     return {
       message: 'Password updated successfully',
       data: null,
+    };
+  }
+
+  /** Validates email confirmation token and returns a login session payload. */
+  async confirmEmail(dto: ConfirmEmailDto): Promise<ApiEnvelope<LoginSessionData>> {
+    const supabase = this.supabaseService.getClient();
+
+    let accessToken = dto.accessToken;
+    let refreshToken = dto.refreshToken ?? '';
+
+    if (dto.refreshToken) {
+      const { data, error: sessionError } = await supabase.auth.setSession({
+        access_token: dto.accessToken,
+        refresh_token: dto.refreshToken,
+      });
+
+      if (sessionError) {
+        this.logger.warn({
+          context: 'AuthService.confirmEmail',
+          event: 'setSessionFailed',
+          message: sessionError.message,
+        });
+        throw new UnauthorizedException('Invalid or expired token');
+      }
+
+      if (!data.session) {
+        throw new UnauthorizedException('Invalid or expired token');
+      }
+
+      accessToken = data.session.access_token;
+      refreshToken = data.session.refresh_token;
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
+    if (userError || !userData.user) {
+      this.logger.warn({
+        context: 'AuthService.confirmEmail',
+        event: 'getUserFailed',
+        message: userError?.message || 'Missing user',
+      });
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    if (!userData.user.email) {
+      this.logger.error({
+        context: 'AuthService.confirmEmail',
+        event: 'confirmMissingEmail',
+        message: 'Supabase returned user without email',
+      });
+      throw new BadRequestException('Email confirmation failed');
+    }
+
+    await this.prisma.user.upsert({
+      where: { id: userData.user.id },
+      update: { email: userData.user.email },
+      create: {
+        id: userData.user.id,
+        email: userData.user.email,
+      },
+    });
+
+    return {
+      message: 'Email confirmed successfully',
+      data: {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      },
     };
   }
 }

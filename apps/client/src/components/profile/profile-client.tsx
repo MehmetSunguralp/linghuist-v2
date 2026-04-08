@@ -55,6 +55,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { AUTH_SIGN_IN_PATH } from '@/config/auth.constants';
 import { imageSrcAfterSigning, resolveSignedStorageUrl } from '@/lib/storage-url';
+import { useChatUnreadCount } from '@/lib/use-chat-unread-count';
 import { buildNumericAgeOptions } from '@/lib/wheel-picker-builders';
 import type {
   ApiEnvelope,
@@ -135,6 +136,7 @@ function LanguageFlagPill({
 }
 
 export function ProfileClient({ profileId }: ProfileClientProps) {
+  const unreadCount = useChatUnreadCount();
   const router = useRouter();
   const accessToken = useAuthStore((s) => s.accessToken);
   const clearSession = useAuthStore((s) => s.clearSession);
@@ -1503,7 +1505,7 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
         )}
       </main>
 
-      <nav className="fixed right-0 bottom-0 left-0 z-40 flex w-full items-center justify-around border-t border-white/10 bg-[#0b1229]/95 px-2 py-2 backdrop-blur md:hidden">
+      <nav className="fixed right-0 bottom-0 left-0 z-40 flex w-full items-center justify-around border-t border-white/10 bg-[#0b1229]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden">
         <Link href="/community" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
           <Users className="h-4 w-4" />
           <span className="text-[11px] font-semibold">{communityStrings.navCommunity}</span>
@@ -1513,7 +1515,14 @@ export function ProfileClient({ profileId }: ProfileClientProps) {
           <span className="text-[11px]">{communityStrings.navFeed}</span>
         </button>
         <Link href="/chats" className="flex flex-col items-center gap-1 text-[#8ea0ba]">
-          <MessageCircle className="h-4 w-4" />
+          <span className="relative inline-flex">
+            <MessageCircle className="h-4 w-4" />
+            {unreadCount > 0 ? (
+              <span className="absolute -top-1.5 -right-2 inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] leading-4 text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            ) : null}
+          </span>
           <span className="text-[11px]">{communityStrings.navChats}</span>
         </Link>
         <button type="button" className="flex flex-col items-center gap-1 text-[#8ea0ba]">

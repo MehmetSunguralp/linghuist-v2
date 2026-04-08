@@ -6,6 +6,7 @@
 export function pathIsPublic(pathname: string): boolean {
   if (pathname === '/' || pathname === '') return true;
   if (pathname.startsWith('/auth')) return true;
+  if (pathname.startsWith('/confirm-email')) return true;
   return false;
 }
 

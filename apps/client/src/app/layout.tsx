@@ -38,6 +38,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  interactiveWidget: 'resizes-content',
   themeColor: AUTH_PAGE_BG_HEX,
   colorScheme: 'dark',
   viewportFit: 'cover',

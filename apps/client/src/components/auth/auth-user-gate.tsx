@@ -21,7 +21,9 @@ export function AuthUserGate({ children }: AuthUserGateProps) {
   const router = useRouter();
   const accessToken = useAuthStore((s) => s.accessToken);
   const clearSession = useAuthStore((s) => s.clearSession);
-  const [hydrated, setHydrated] = React.useState(false);
+  const [hydrated, setHydrated] = React.useState(
+    typeof globalThis.window !== 'undefined' ? Boolean(useAuthStore.persist?.hasHydrated?.()) : false,
+  );
 
   React.useEffect(() => {
     const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
